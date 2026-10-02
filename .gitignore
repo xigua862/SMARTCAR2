@@ -14,10 +14,15 @@
 *.dep
 *.htm
 
-# ===== Keil MDK-ARM 中间文件 =====
-MDK-ARM/test16/
-MDK-ARM/Objects/
-MDK-ARM/Listings/
+# ===== Keil 中间文件（2026-10-02 整理后工程已移到 固件-STM32空壳/，故用 **/ 匹配任意层）=====
+**/MDK-ARM/test16/
+**/MDK-ARM/Objects/
+**/MDK-ARM/Listings/
+**/mdk/out_file/
+**/Debug/
+*.elf
+*.mtb
+*.map
 *.o
 *.d
 *.crf
