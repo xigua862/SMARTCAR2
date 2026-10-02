@@ -39,7 +39,7 @@
 <div class="container">
 
 <h1>🔌 B 车 · STM32F103C8T6 自画板 引脚图</h1>
-<p class="subtitle">v1.3 · 2026-10-02 · 配套《框架定稿-B车C8T6-20261002.md》· 逻辑轨 4.7V→<b>5V</b> · 物理脚号以立创库/数据手册为准，本表锁功能映射</p>
+<p class="subtitle">v1.4 · 2026-10-02 · 配套《框架定稿-B车C8T6-20261002.md》· 逻辑轨 <b>5V</b> + 子板双轨 · 物理脚号以立创库/数据手册为准，本表锁功能映射</p>
 
 <div class="legend">
   <span class="lg-sensor">■ 灰度/编码器</span>
@@ -113,18 +113,21 @@
 
 <!-- ===== 灰度子板排针 ===== -->
 <div class="tb-section">
-<h3>🟢 灰度子板 ↔ 主板：11P 排针定义（2.54mm，带防呆缺角；v1.3 多一路 5V）</h3>
+<h3>🟢 灰度子板 ↔ 主板：11P 排针定义（2.54mm，带防呆缺角；v1.4 已调顺序：<b>5V 放最外端</b>）</h3>
 <table>
   <thead><tr><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th><th>7</th><th>8</th><th>9</th><th>10</th><th>11</th></tr></thead>
   <tbody>
-    <tr><td class="sig c-sensor">IR1</td><td class="sig c-sensor">IR2</td><td class="sig c-sensor">IR3</td><td class="sig c-sensor">IR4</td><td class="sig c-sensor">IR5</td><td class="sig c-sensor">IR6</td><td class="sig c-sensor">IR7</td><td class="sig c-sensor">IR8</td><td class="sig c-power">5V</td><td class="sig c-power">3V3</td><td class="sig c-power">GND</td></tr>
-    <tr><td class="c-sensor">PA0</td><td class="c-sensor">PA1</td><td class="c-sensor">PA2</td><td class="c-sensor">PA3</td><td class="c-sensor">PA4</td><td class="c-sensor">PA5</td><td class="c-sensor">PA6</td><td class="c-sensor">PA7</td><td class="c-power">发射管/LM393</td><td class="c-power">信号侧</td><td class="c-power">地</td></tr>
+    <tr><td class="sig c-sensor">IR1</td><td class="sig c-sensor">IR2</td><td class="sig c-sensor">IR3</td><td class="sig c-sensor">IR4</td><td class="sig c-sensor">IR5</td><td class="sig c-sensor">IR6</td><td class="sig c-sensor">IR7</td><td class="sig c-sensor">IR8</td><td class="sig c-power">3V3</td><td class="sig c-power">GND</td><td class="sig c-power">5V</td></tr>
+    <tr><td class="c-sensor">PA0</td><td class="c-sensor">PA1</td><td class="c-sensor">PA2</td><td class="c-sensor">PA3</td><td class="c-sensor">PA4</td><td class="c-sensor">PA5</td><td class="c-sensor">PA6</td><td class="c-sensor">PA7</td><td class="c-power">信号侧</td><td class="c-power">地</td><td class="c-power">发射管/LM393</td></tr>
   </tbody>
 </table>
 <div class="note-box">
   子板每路：ITR9909/TCRT5000 + LM393 + 电位器调阈值。⚠ <b>LM393 是双路 → 8 路要 4 片</b>（想用 2 片就换 LM339 四路），每片 VCC-GND 就近 100nF。<br>
-  <b>★ v1.3 双轨接法（必照这个画）</b>：发射管限流电阻与 <b>LM393 的 VCC 接 5V</b>；<b>接收管上拉、阈值电位器、比较器输出上拉全部接 3.3V</b>。<br>
+  <b>★ 双轨接法（v1.3 定、v1.4 补元件值，必照这个画）</b>：发射管限流电阻与 <b>LM393 的 VCC 接 5V</b>；<b>接收管上拉、阈值电位器、比较器输出上拉全部接 3.3V</b>。<br>
   理由：LM393 输入共模上限 = VCC−1.5V → 5V 供电时是 3.5V，容得下 3.3V 信号；若 LM393 也接 3.3V，上限只到 1.8V → 信号出范围，<b>表现为"阈值怎么调都没反应"</b>。<br>
+  <b>★ 单路元件值（详见框架定稿 §2.4）</b>：R1 330Ω(5V→发射管) · R2 10k(<b>3V3</b>→集电极) · R3 10k 电位器<b>上下各夹 10k</b>(窗口 1.1~2.2V) · R4 <b>4.7k</b>(3V3→OUT) · R5 <b>470Ω</b>(3V3→指示灯→OUT) · R6 <b>470k</b>(OUT↔集电极，迟滞) · 节点 100pF，<b>输出严禁挂 100nF</b>。<br>
+  <b>★ 极性</b>：白线 → 集电极低 → OUT 高 ⇒ <b>白 = 1、黑 = 0</b>（<span class="sig">IR_WHITE_IS=1</span>），指示灯黑线时亮。<br>
+  <b>★ 为何 5V 放最外端</b>：插错位时最坏是 3V3↔GND 或 5V↔GND（短路、PTC 跳、不烧脚）；若 5V 与 3V3 相邻，错一格就把 5V 灌进 3.3V 网络 → 8 个信号脚一起超压。<br>
   <strong>遮光是黑底白线方案的第一翻车点</strong>：每颗管加隔光墙 + 热缩管，侧面漏光必误判。<br>
   子板单独打样、单独换 —— 撞了不心疼，主板才心疼。
 </div>
@@ -143,18 +146,18 @@
 </div>
 
 <div class="danger">
-<strong>⚠️ 画板前必读（v1.3）：</strong><br>
+<strong>⚠️ 画板前必读（v1.4）：</strong><br>
 ① <strong>底板你自己设计，一次做完三步</strong>：底板（含负压圆孔+4 个螺丝孔）→ 主板板框与接插件位置→ 灰度子板最后画。<br>
 　　关键尺寸：轮距 75~85mm、灰度前缘→驱动轴 <b>≤45mm</b>、驱动轴→车尾 <b>≤50mm</b>、总长 <b>≤130mm</b>（R200 偏移 d²/(2R) 推出来）<br>
 ② <strong>IMU 已核实无需切接口</strong>（逐飞 IMU660RC 只有 I2C/SPI，没 UART）→ SPI2 @ <b>9MHz</b>，IMU 座留 <b>8P</b>：3V3/GND/CS/SCK/MISO/MOSI/INT1/INT2。<br>
 　　⚠ 唯一要盯的：模块上 <b>SDO 与 SA0 是同一根脚</b>，SPI 接法下它是 MISO，<b>严禁接地</b>。<br>
 ③ 主板上留 <strong>4 个板边测试盘（3.3V/VM/GND/空闲）</strong>——你说过"电机会因为震动突然断电"，查这个必须能夹表笔。<br>
 ④ 主板用铜柱<strong>架在底板上方</strong>：既当加强梁防"开负压后底板变形、轮子外八"，又当负压腔上盖支撑。<br>
-⑤ <strong>逻辑轨已改 5V</strong>：灰度子板排针从 10P 变 <b>11P（+5V）</b>，板上要多走一路 5V；<b>信号侧仍是 3.3V</b>，不要把两轨弄反。
+⑤ <strong>逻辑轨 5V + 子板双轨</strong>：发射管与 LM393 VCC 走 5V，<b>信号侧与输出上拉全部走 3.3V</b>；排针 <b>11P = 8DO / 3V3 / GND / 5V（5V 在最外端防插错）</b>。单路元件值见框架定稿 §2.4。
 </div>
 
 <p style="text-align:center;margin-top:14px;font-size:11px;color:#999;">
-B 车 · C8T6 自画板引脚图 <b>v1.3</b> · 2026-10-02 · 依据：N30(11.1V/33000rpm/200gf·cm/堵转&lt;15A) + 逐飞迷你编码器 Pro 1024P/R(<b>装轮轴</b>) + 逐飞 IMU660RC(LSM6DSV16X，<b>已核实无 UART</b>) + 负压风机 5Ω（扇叶/支架已有）· <b>逻辑轨 5V</b>
+B 车 · C8T6 自画板引脚图 <b>v1.4</b> · 2026-10-02 · 依据：N30(11.1V/33000rpm/200gf·cm/堵转&lt;15A) + 逐飞迷你编码器 Pro 1024P/R(<b>装轮轴</b>) + 逐飞 IMU660RC(LSM6DSV16X，<b>已核实无 UART</b>) + 负压风机 5Ω（扇叶/支架已有）· <b>逻辑轨 5V</b>
 </p>
 
 </div>
