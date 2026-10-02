@@ -39,7 +39,7 @@
 <div class="container">
 
 <h1>🔌 B 车 · STM32F103C8T6 自画板 引脚图</h1>
-<p class="subtitle">v1.1 · 2026-10-02 · 配套《框架定稿-B车C8T6-20261002.md》· 物理脚号以立创库/数据手册为准，本表锁功能映射</p>
+<p class="subtitle">v1.2 · 2026-10-02 · 配套《框架定稿-B车C8T6-20261002.md》· 物理脚号以立创库/数据手册为准，本表锁功能映射</p>
 
 <div class="legend">
   <span class="lg-sensor">■ 灰度/编码器</span>
@@ -83,11 +83,13 @@
   <tr><td class="pin">PB4</td><td class="sig c-sensor">R_ENC_A</td><td>IN</td><td class="c-sensor">✅ FT</td><td class="c-sensor">右编码器 A</td></tr>
   <tr><td class="pin">PB5</td><td class="sig c-sensor">R_ENC_B</td><td>IN</td><td class="c-sensor">✅ FT</td><td class="c-sensor">右编码器 B</td></tr>
 
-  <tr><td colspan="6" class="section-title">④ 陀螺仪 —— 逐飞 IMU660R（LSM6DSV16X）· 现成模块排针立装 + 减震柱</td></tr>
-  <tr><td class="pin">PB13</td><td class="sig c-comm">SPI2_SCK</td><td>OUT</td><td class="c-sensor">✅ FT</td><td class="c-comm">IMU SCK</td><td style="text-align:left" rowspan="4">★ <b>必须跑 SPI</b>，⚠ 逐飞模块出厂默认往往是 <b>UART</b> → <b>画板前先查怎么切 SPI（上位机或上电拉脚）</b><br>为何不能用 UART：LQFP48 只有 USART1+USART2（无 UART4/5），而 USART2=PA2/PA3 与灰度直接撞车<br>　→ 实在切不了：IMU 占 USART1(PA9/PA10)，遥测退 USART2(PA2/PA3)，灰度重排为 PA0,PA1,PA4~PA7+PB0,PB1<br>模块直出四元数 → <b>姿态解算不用自己写</b>；imu.c 只读陀螺 Z + 四元数 yaw 就够<br>IMU 区离风机 ≥40mm、四角减震柱、板面印方向箭头（方向错 = 角度符号反）</td></tr>
-  <tr><td class="pin">PB14</td><td class="sig c-comm">SPI2_MISO</td><td>IN</td><td class="c-sensor">✅ FT</td><td class="c-comm">IMU MISO</td></tr>
-  <tr><td class="pin">PB15</td><td class="sig c-comm">SPI2_MOSI</td><td>OUT</td><td class="c-sensor">✅ FT</td><td class="c-comm">IMU MOSI</td></tr>
-  <tr><td class="pin">PB12</td><td class="sig c-comm">SPI2_NSS</td><td>OUT</td><td class="c-sensor">✅ FT</td><td class="c-comm">IMU CS</td></tr>
+  <tr><td colspan="6" class="section-title">④ 陀螺仪 —— 逐飞 IMU660RC（LSM6DSV16X）· 现成模块排针立装 + 减震柱 · <b>✅已核实：模块无 UART，只有 I2C/SPI</b></td></tr>
+  <tr><td class="pin">PB13</td><td class="sig c-comm">SPI2_SCK</td><td>OUT</td><td class="c-sensor">✅ FT</td><td class="c-comm">IMU 排针 SCL/SPC</td><td style="text-align:left" rowspan="6">✅ <b>不用“切接口”</b>：逐飞官方资料确认模块<b>没有 UART</b>，接口由接线决定，接 4 根就是 SPI（逐飞例程默认就是硬件 SPI）<br>★ SPI 速率定 <b>9MHz</b>：SPI2 挂 APB1(36MHz) 分频 /4；芯片上限 10MHz，<b>别用 /2</b><br>⚠ 真坑：<b>SDO 与 SA0 是同一根脚</b>（I2C 选地址 / SPI 是 MISO）→ SPI 接法时这根必须回 MCU，<b>严禁接地或接 3.3V</b><br>★ INT1/INT2 白送：做 DRDY 外部中断，陀螺采样时刻由芯片给，积分抖动远小于软件轮询<br>模块供电给 <b>3.3V</b>（模块自带 LDO，电平天然匹配）；直出四元数，但<b>四元数→yaw 仍要自己写</b>（逐飞例程已给）<br>IMU 区离风机 ≥40mm、四角减震柱、板面印方向箭头（方向错 = 角度符号反）</td></tr>
+  <tr><td class="pin">PB14</td><td class="sig c-comm">SPI2_MISO</td><td>IN</td><td class="c-sensor">✅ FT</td><td class="c-comm">IMU 排针 SA0/SDO</td></tr>
+  <tr><td class="pin">PB15</td><td class="sig c-comm">SPI2_MOSI</td><td>OUT</td><td class="c-sensor">✅ FT</td><td class="c-comm">IMU 排针 SDA/SDI</td></tr>
+  <tr><td class="pin">PB12</td><td class="sig c-comm">SPI2_NSS</td><td>OUT</td><td class="c-sensor">✅ FT</td><td class="c-comm">IMU 排针 CS</td></tr>
+  <tr><td class="pin">PB8</td><td class="sig c-comm">INT1 → EXTI9_5</td><td>IN</td><td class="c-sensor">✅ FT</td><td class="c-comm">IMU INT1 (DRDY)</td><td style="text-align:left">可选但强烈建议：硬件定时采样，提高陀螺积分精度</td></tr>
+  <tr><td class="pin">PB9</td><td class="sig c-comm">INT2 → EXTI9_5</td><td>IN</td><td class="c-sensor">✅ FT</td><td class="c-comm">IMU INT2</td><td style="text-align:left">备用（如 4000dps 过量程报警）</td></tr>
 
   <tr><td colspan="6" class="section-title">⑤ 调试 / 交互</td></tr>
   <tr><td class="pin">PB6</td><td class="sig c-comm">USART1_TX</td><td>OUT</td><td class="c-sensor">✅ FT</td><td class="c-comm">USB-TTL RXD</td><td style="text-align:left">115200，上位机波形 + 串口调参，TX 用 DMA 不阻塞控制</td></tr>
@@ -139,16 +141,17 @@
 </div>
 
 <div class="danger">
-<strong>⚠️ 画板前必读（v1.1）：</strong><br>
+<strong>⚠️ 画板前必读（v1.2）：</strong><br>
 ① <strong>底板你自己设计，一次做完三步</strong>：底板（含负压圆孔+4 个螺丝孔）→ 主板板框与接插件位置→ 灰度子板最后画。<br>
 　　关键尺寸：轮距 75~85mm、灰度前缘→驱动轴 <b>≤45mm</b>、驱动轴→车尾 <b>≤50mm</b>、总长 <b>≤130mm</b>（R200 偏移 d²/(2R) 推出来）<br>
-② <strong>IMU660R 能否切 SPI —— 画板前 5 分钟查清楚</strong>，否则串口不够用（详见 §④ 表注）。<br>
+② <strong>IMU 已核实无需切接口</strong>（逐飞 IMU660RC 只有 I2C/SPI，没 UART）→ SPI2 @ <b>9MHz</b>，IMU 座留 <b>8P</b>：3V3/GND/CS/SCK/MISO/MOSI/INT1/INT2。<br>
+　　⚠ 唯一要盯的：模块上 <b>SDO 与 SA0 是同一根脚</b>，SPI 接法下它是 MISO，<b>严禁接地</b>。<br>
 ③ 主板上留 <strong>4 个板边测试盘（3.3V/VM/GND/空闲）</strong>——你说过"电机会因为震动突然断电"，查这个必须能夹表笔。<br>
 ④ 主板用铜柱<strong>架在底板上方</strong>：既当加强梁防"开负压后底板变形、轮子外八"，又当负压腔上盖支撑。
 </div>
 
 <p style="text-align:center;margin-top:14px;font-size:11px;color:#999;">
-B 车 · C8T6 自画板引脚图 <b>v1.1</b> · 2026-10-02 · 依据：N30(11.1V/33000rpm/200gf·cm/堵转&lt;15A) + 逐飞迷你编码器 Pro 1024P/R(<b>装轮轴</b>) + 逐飞 IMU660R(LSM6DSV16X) + 负压风机 5Ω（扇叶/支架已有）
+B 车 · C8T6 自画板引脚图 <b>v1.2</b> · 2026-10-02 · 依据：N30(11.1V/33000rpm/200gf·cm/堵转&lt;15A) + 逐飞迷你编码器 Pro 1024P/R(<b>装轮轴</b>) + 逐飞 IMU660RC(LSM6DSV16X，<b>已核实无 UART</b>) + 负压风机 5Ω（扇叶/支架已有）
 </p>
 
 </div>
