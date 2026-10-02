@@ -39,7 +39,7 @@
 <div class="container">
 
 <h1>🔌 B 车 · STM32F103C8T6 自画板 引脚图</h1>
-<p class="subtitle">v1.6 · 2026-10-02 · 配套《框架定稿-B车C8T6-20261002.md》· <b>子板单 3.3V（取消双轨）</b> · 逻辑轨 4.7V → AMS1117 → 3.3V · 型号 <b>ITR9909</b> · 物理脚号以立创库/数据手册为准，本表锁功能映射</p>
+<p class="subtitle">v1.7 · 2026-10-02 · 配套《框架定稿-B车C8T6-20261002.md》· <b>子板恢复 5V + 3.3V 双轨（原理图定稿，已开画 PCB）</b> · 逻辑轨 12V→<b>5V</b>→AMS1117→3.3V · 型号 <b>ITR9909</b> · 物理脚号以立创库/数据手册为准，本表锁功能映射</p>
 
 <div class="legend">
   <span class="lg-sensor">■ 灰度/编码器</span>
@@ -60,8 +60,8 @@
   <tbody>
 
   <tr><td colspan="6" class="section-title">① 灰度 8 路 —— 一次整口读，将来还能当 ADC 用</td></tr>
-  <tr><td class="pin">PA0</td><td class="sig c-sensor">IR1 (最左)</td><td>IN</td><td class="c-warn">❌ 非FT</td><td class="c-sensor">灰度子板 CH1 DO</td><td style="text-align:left">v1.6：子板<b>全部 3.3V</b>，不再送 5V → 这 8 个脚从源头就不会超压</td></tr>
-  <tr><td class="pin">PA1</td><td class="sig c-sensor">IR2</td><td>IN</td><td class="c-warn">❌ 非FT</td><td class="c-sensor">灰度子板 CH2 DO</td><td style="text-align:left" rowspan="8">读法：<span class="sig">ir = GPIOA-&gt;IDR &amp; 0xFF</span>（一条指令拿全帧）<br>极性用宏 <span class="sig">IR_WHITE_IS</span> 统一，别在业务里散着取反<br>★ 这 8 个脚兼 <b>ADC1_IN0~IN7</b>，但子板送上来的是 LM393 <b>之后</b>的 0/1，直读没意义 → 要升级模拟差比和，必须把<b>比较器之前</b>的节点引出来（排针改 2×10，第二列 AO）+ 加运放跟随<br>管间距 <b>12.5~13mm</b>（⚠ 20mm 装不下，首尾中心距 7×20=140mm > 车宽，见框架定稿 §2.4）、离地 <b>6mm±1</b>（ITR9909 手册测试条件）螺丝定死、每管加遮光隔墙</td></tr>
+  <tr><td class="pin">PA0</td><td class="sig c-sensor">IR1 (最左)</td><td>IN</td><td class="c-warn">❌ 非FT</td><td class="c-sensor">灰度子板 CH1 DO</td><td style="text-align:left">v1.7：子板信号侧（含比较器输出上拉）<b>全 3.3V</b>，5V 只给发射管与 LM393 的 VCC → 上拉一旦错接 5V，内部 ESD 二极管会把该脚钳住并倒灌</td></tr>
+  <tr><td class="pin">PA1</td><td class="sig c-sensor">IR2</td><td>IN</td><td class="c-warn">❌ 非FT</td><td class="c-sensor">灰度子板 CH2 DO</td><td style="text-align:left" rowspan="8">读法：<span class="sig">ir = GPIOA-&gt;IDR &amp; 0xFF</span>（一条指令拿全帧）<br>极性用宏 <span class="sig">IR_WHITE_IS</span> 统一，别在业务里散着取反<br>★ 这 8 个脚兼 <b>ADC1_IN0~IN7</b>，但子板送上来的是 LM393 <b>之后</b>的 0/1，直读没意义 → 要升级模拟差比和，必须把<b>比较器之前</b>的节点引出来（排针改 2×10，第二列 AO）+ 加运放跟随<br>管间距 <b>见下方“子板坐标定稿”（轻度收腰 ±5/±15/±27.5/±40mm）</b>、离地 <b>6mm±1</b>（ITR9909 手册测试条件）螺丝定死、每管加遮光隔墙</td></tr>
   <tr><td class="pin">PA2</td><td class="sig c-sensor">IR3</td><td>IN</td><td class="c-warn">❌ 非FT</td><td class="c-sensor">灰度子板 CH3 DO</td></tr>
   <tr><td class="pin">PA3</td><td class="sig c-sensor">IR4</td><td>IN</td><td class="c-warn">❌ 非FT</td><td class="c-sensor">灰度子板 CH4 DO</td></tr>
   <tr><td class="pin">PA4</td><td class="sig c-sensor">IR5</td><td>IN</td><td class="c-warn">❌ 非FT</td><td class="c-sensor">灰度子板 CH5 DO</td></tr>
@@ -105,33 +105,42 @@
 
   <tr><td colspan="6" class="section-title">⑥ 电源与地</td></tr>
   <tr><td class="pin">VM</td><td class="sig c-power">+12.6V 功率轨</td><td>—</td><td class="c-power">—</td><td class="c-power">XT30 → 开关 → 保险10A → AT8236 VM</td><td style="text-align:left">电机/风机<b>直给 12V</b>，绝不允许走逻辑轨（转速砍一半）</td></tr>
-  <tr><td class="pin">VIN</td><td class="sig c-power">+4.7V 中间轨</td><td>—</td><td class="c-power">—</td><td class="c-power">12V→<b>4.7V</b> 降压模块（学长那只直接用）</td><td style="text-align:left">v1.6：<b>这一轨只进 LDO，不上子板</b>。确认输入耐压覆盖 12.6V；输出并 220µF 降纹波（纹波直进陀螺仪 = Z 零偏漂）；模块连续 ≥300mA 即可</td></tr>
-  <tr><td class="pin">3V3</td><td class="sig c-power">+3.3V</td><td>—</td><td class="c-power">—</td><td class="c-power">AMS1117-3.3 ← <b>4.7V</b></td><td style="text-align:left">⚠ <b>严禁 RT9013</b>（250mA）。v1.6 重算：发射管已搬回 3.3V → MCU/IMU 60 + 发射管 <b>184</b> + 分压与杂 30 ≈ <b>270mA</b> → 选 <b>≥500mA</b>；LDO 耗 0.38W ✅。<br>⚠ <b>严禁让 LDO 直吃 12.6V</b>（2.5W → 热保护），所以 4.7V 那一级不能省</td></tr>
+  <tr><td class="pin">VIN</td><td class="sig c-power">+5V 中间轨</td><td>—</td><td class="c-power">—</td><td class="c-power">12V→<b>5V</b> 降压模块</td><td style="text-align:left">v1.7：<b>这一轨既进 LDO，也上子板</b>（发射管 + LM393 的 VCC）。⚠ <b>不能是 4.7V</b>：4.7V 时 LM393 共模上限 3.2V，而黑态节点就是 3.3V → <b>超限 0.1V</b>，表现为阈值拧到上半段没反应。确认输入耐压覆盖 12.6V；输出并 220µF 降纹波；<b>连续 ≥400mA</b></td></tr>
+  <tr><td class="pin">5V</td><td class="sig c-power">+5V → 子板</td><td>—</td><td class="c-power">—</td><td class="c-power">排针第 11 针（最外端）</td><td style="text-align:left">只给<b>发射管（8×180Ω）与 4 片 LM393 的 VCC</b>，合计 ≈171mA。⚠ <b>严禁接到任何 MCU 引脚</b>，PA0~PA7 非 FT</td></tr>
+  <tr><td class="pin">3V3</td><td class="sig c-power">+3.3V</td><td>—</td><td class="c-power">—</td><td class="c-power">AMS1117-3.3 ← <b>5V</b></td><td style="text-align:left">⚠ <b>严禁 RT9013</b>（250mA）。v1.7 双轨重算：发射管已搬去 5V → MCU/IMU 60 + 上拉与杂 30~50 ≈ <b>90~120mA</b> → 选 <b>≥300mA</b> 即可；LDO 耗 (5−3.3)×0.12 = <b>0.2W</b> ✅。<br>⚠ <b>严禁让 LDO 直吃 12.6V</b>（1.1W → 热保护），所以 5V 那一级不能省</td></tr>
   <tr><td class="pin">GND</td><td class="sig c-power">星形单点地</td><td>—</td><td class="c-power">—</td><td class="c-power">功率地/逻辑地/子板地 在输出电容负极汇一点</td><td style="text-align:left">灰度子板地走独立回线，不穿功率区</td></tr>
   </tbody>
 </table>
 
 <!-- ===== 灰度子板排针 ===== -->
 <div class="tb-section">
-<h3>🟢 灰度子板 ↔ 主板：10P 排针定义（2.54mm，带防呆缺角；<b>v1.6 子板改单 3.3V → 5V 这一针删了</b>）</h3>
+<h3>🟢 灰度子板 ↔ 主板：11P 排针定义（2.54mm，带防呆缺角；<b>v1.7 恢复双轨 → 5V 这一针加回来，放最外端</b>）</h3>
 <table>
-  <thead><tr><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th><th>7</th><th>8</th><th>9</th><th>10</th></tr></thead>
+  <thead><tr><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th><th>7</th><th>8</th><th>9</th><th>10</th><th>11</th></tr></thead>
   <tbody>
-    <tr><td class="sig c-sensor">IR1</td><td class="sig c-sensor">IR2</td><td class="sig c-sensor">IR3</td><td class="sig c-sensor">IR4</td><td class="sig c-sensor">IR5</td><td class="sig c-sensor">IR6</td><td class="sig c-sensor">IR7</td><td class="sig c-sensor">IR8</td><td class="sig c-power">3V3</td><td class="sig c-power">GND</td></tr>
-    <tr><td class="c-sensor">PA0</td><td class="c-sensor">PA1</td><td class="c-sensor">PA2</td><td class="c-sensor">PA3</td><td class="c-sensor">PA4</td><td class="c-sensor">PA5</td><td class="c-sensor">PA6</td><td class="c-sensor">PA7</td><td class="c-power">全板唯一电源</td><td class="c-power">地</td></tr>
+    <tr><td class="sig c-sensor">IR1</td><td class="sig c-sensor">IR2</td><td class="sig c-sensor">IR3</td><td class="sig c-sensor">IR4</td><td class="sig c-sensor">IR5</td><td class="sig c-sensor">IR6</td><td class="sig c-sensor">IR7</td><td class="sig c-sensor">IR8</td><td class="sig c-power">GND</td><td class="sig c-power">3V3</td><td class="sig c-power">5V</td></tr>
+    <tr><td class="c-sensor">PA0</td><td class="c-sensor">PA1</td><td class="c-sensor">PA2</td><td class="c-sensor">PA3</td><td class="c-sensor">PA4</td><td class="c-sensor">PA5</td><td class="c-sensor">PA6</td><td class="c-sensor">PA7</td><td class="c-power">地</td><td class="c-power">信号侧电源</td><td class="c-power">发射管 + LM393 VCC</td></tr>
   </tbody>
 </table>
 <div class="note-box">
   子板每路：<b>ITR9909</b>（v1.5 定型号，DIP-4 通孔 8.7×4.5×5.9mm，要留通孔封装）+ LM393 + 电位器调阈值。⚠ <b>LM393 是双路 → 8 路要 4 片</b>（想用 2 片就换 LM339 四路），每片 VCC-GND 就近 100nF。<br>
-  <b>★ v1.6：子板上只出现 3.3V 一个电压</b>（取消双轨）。发射管、LM393 的 VCC、上拉、阈值、指示灯 —— <b>全部 3V3</b>，<b>不送 5V 上子板</b>。<br>
-  障碍与解法：LM393 输入共模上限 = VCC−1.5V → 3.3V 供电时只到 <b>1.8V</b>，而接收管节点原本要摆到 3.3V。<br>
-  → <b>把上拉电阻一分为二：3V3 → 20k → 集电极 → 20k → GND</b>，节点被钳在 <b>1.65V</b>，黑/白全落在 1.8V 窗内。每路只多一只电阻，<b>不换比较器</b>。<br>
-  <b>★ 单路元件值（v1.6 定稿，详见框架定稿 §2.4）</b>：R1 <b>82Ω/0805</b>(3V3→发射管，≈23mA) · R2a <b>20k</b>(3V3→集电极) + R2b <b>20k</b>(集电极→GND) · R3 10k 电位器<b>跨在 1.65V 中点上</b>（全板共用 2×20k 分出，下端直接 GND）· R4 <b>4.7k</b>(3V3→OUT) · R5 <b>470Ω</b>(3V3→指示灯→OUT) · R6 <b>470k~1M</b>(OUT↔集电极，迟滞) · 节点 100pF，<b>输出严禁挂 100nF</b>。<br>
+  <b>★ v1.7：子板恢复 5V + 3.3V 双轨（原理图已定稿，已开画 PCB）</b>。发射管与 4 片 LM393 的 VCC 走 <b>5V</b>；
+  接收管上拉、阈值电位器、输出上拉、指示灯全走 <b>3.3V</b>。LM393 是开集电极，把输出拉到低于 VCC 的任意电压合法。<br>
+  为什么必须双轨：LM393 输入共模上限 = VCC−1.5V → <b>5V 供电时 3.5V</b>，而黑态节点就是 3.3V，余量 0.2V ✅；
+  若 LM393 也用 3.3V 供电，上限只 1.8V → 信号出范围，表现为“阈值怎么拧都没反应”。⚠ <b>4.7V 也不行</b>（上限 3.2V，超限 0.1V）。<br>
+  <b>★ 单路元件值（v1.7 定稿，详见框架定稿 §2.4）</b>：R1 <b>180Ω/0805</b>(5V→发射管，≈21mA；⚠ 0603 不行，自耗 76mW) · R2 <b>10k</b>(3V3→集电极) · R3 10k 电位器<b>逐路 8 只</b>，上端 3V3、下端串 10k 到 GND · R4 <b>4.7k</b>(3V3→OUT) · R5 <b>470Ω</b>(3V3→指示灯→OUT) · 每片 100nF（已画 U13~U16，PCB 上必须贴脚 &lt;2mm）· <b>输出严禁挂 100nF</b>。<br>
+  <b>★ 迟滞（R6 470k，OUT↔集电极）本版未画 → PCB 上每路留一个空 0603 焊盘不焊</b>；弧上侧倾会把离地从 6mm 拉到 5~8mm、阈值跟着漂，实测抖再焊。<b>节点 100pF 定为不需要</b>（10k×100p=1µs，对 15µs 的管子无意义）。<br>
   <b>★ 过采样要改口径</b>：ITR9909 的 tr=tf = <b>15µs</b> → 一拍内 1µs 间隔的突发采样对这颗管无意义，子采样间隔要 <b>≥50µs</b>。<br>
-  <b>★ 极性</b>：白线 → 集电极低 → OUT 高 ⇒ <b>白 = 1、黑 = 0</b>（<span class="sig">IR_WHITE_IS=1</span>），指示灯黑线时亮。<br>
-  <b>★ 信号摆幅（v1.6）</b>：白线→接收管深度饱和→节点 <b>≈0.2V</b>；黑布→节点 <b>1.25~1.45V</b>；可用阈值区 0.2~1.4V，电位器行程 0~1.65V 全有效。<br>
-  <b>★ 单轨付的账</b>：发射管 184mA 与 MCU/IMU 共轨 → 轨跌 0.3V 时 LED 电流掉≈17% → <b>子板入口必装 10µF</b>、3.3V 走线要粗短、电机扰动大时先量 3.3V 再调阈值。<br>
-  <b>★ 为何不留 5V</b>：子板单电压 → 排针 11P→10P，物理上不可能出现"把 5V 灌进 3.3V 网络 / 烧 PA0~PA7"。<br>
+  <b>★ 极性</b>：白线 → 集电极低 → OUT 高 ⇒ <b>白 = 1、黑 = 0</b>（<span class="sig">IR_WHITE_IS=1</span>），指示灯<b>黑底</b>时亮。<br>
+  <b>★ 信号摆幅（v1.7）</b>：白线节点按手册下限算 <b>≤1.3V</b>（实际深度饱和 0.2~0.4V）；黑布节点 <b>3.1~3.3V</b>；
+  电位器行程 1.65~3.3V → <b>整段全有效</b>（这就是 R1 从 330Ω 改 180Ω 换来的，330Ω 时只有 56% 行程有用）。调阈值拧到 <b>2.2~2.6V</b> 那一带，别用端点。<br>
+  <b>★ 双轨付的账</b>：5V 上多了 165mA 发射管 → <b>降压模块要 ≥400mA，且必须 5V 输出</b>（不是一只电阻能解决的，是整只模块）。好处：发射管与 MCU/IMU 不共轨。<br>
+  <b>★ 排针 11P 与主板同序同缺角</b>：5V 放最外端 → 错位一格是短路（PTC 跳），不是把 5V 灌进 3.3V 网络。<br>
+  <b>★ 子板坐标定稿（轻度收腰，v1.7）</b>：从左到右 <span class="sig">-40 / -27.5 / -15 / -5 / +5 / +15 / +27.5 / +40 mm</span>（总宽 80 → 板宽 ≈88）。
+  间距档 12.5/12.5/10/10/10/12.5/12.5。⚠ <b>中心一对必须明显小于 25mm 线宽</b> —— 若放 ±13mm（间距 26mm），正压线中心时两管全在线外 → 8 位全 0 → 误判丢线。
+  非均匀 → 代码必须用 <span class="sig">IR_POS[]</span> 查表加权，不能用 <span class="sig">(i-3.5)</span> 索引式。<br>
+  <b>★ 布局三条硬规定</b>：封装 <b>8.7mm 那一边朝车头-车尾、4.5mm 朝横向</b>（反了 10mm 档不成立，且线边缘落在两管之间时会骑阈值抖 4mm）；
+  灰度排装在<b>驱动轴前 45mm（取上限）</b>，装在轴后必读“已经转过去的线”；<b>管子贴板顶装 → 板顶面离地 6mm</b>，DIP 引脚穿出板底约 3mm 要焊完剪平。<br>
   <strong>遮光是黑底白线方案的第一翻车点</strong>：每颗管加隔光墙 + 热缩管，侧面漏光必误判。<br>
   子板单独打样、单独换 —— 撞了不心疼，主板才心疼。
 </div>
@@ -143,26 +152,26 @@
 <div class="note-box" style="background:#eaf2f8;border-left-color:#3498db">
 3S 锂电 11.1~12.6V → <strong>XT30</strong> → 船型开关(≥10A) → 保险/PTC 10A<br>
 ├─ <strong>功率轨 VM 12.6V</strong> → AT8236 ×2(+1预留) → 电机 / 风机　<span style="color:#c0392b">走线 ≥1.2mm@1oz、铺铜开窗加锡、就近 470µF/25V + 0.1µF×3、OUT→端子 100nF+磁珠、电机线 ≤10cm 双绞 18AWG</span><br>
-└─ <strong>逻辑轨</strong> → 12V→<strong>4.7V</strong> 降压模块（学长那只直接用）→ AMS1117-3.3（≥500mA）→ <strong>3.3V</strong> = MCU / IMU / <strong>灰度子板全部</strong> / 蜂鸣，全车唯一逻辑电压<br>
-<span style="color:#c0392b">3.3V 预算：MCU/IMU 60 + 发射管 8×23=184 + 杂 30 ≈ 270mA；LDO 耗 (4.7−3.3)×0.27 = 0.38W ✅</span><br>
+└─ <strong>逻辑轨</strong> → 12V→<strong>5V</strong> 降压模块（⚠ 不能是 4.7V）→ 一路直接上子板（发射管 + LM393 VCC），另一路 → AMS1117-3.3（≥300mA）→ <strong>3.3V</strong> = MCU / IMU / <strong>子板信号侧</strong> / 蜂鸣<br>
+<span style="color:#c0392b">5V 预算：发射管 8×21 = 165 + LM393 4 片 6 + LDO 输入 120 ≈ <b>290mA</b> → 模块要连续 ≥400mA；3.3V 预算 ≈ 90~120mA，LDO 耗 (5−3.3)×0.12 = 0.2W ✅</span><br>
 <br>
-★ 严禁 4S。★ <b>严禁让 LDO 直吃 12.6V</b>（(12.6−3.3)×0.27 = 2.5W → SOT-223 热保护）——“不用 5V”不等于“少一级”，降压那一级仍必须有，只是它不上子板。★ 每颗 AT8236 必须设 3A 限流。
+★ 严禁 4S。★ <b>严禁让 LDO 直吃 12.6V</b>（(12.6−3.3)×0.12 = 1.1W → SOT-223 热保护）—— 降压那一级必须有。★ 每颗 AT8236 必须设 3A 限流。
 </div>
 </div>
 
 <div class="danger">
-<strong>⚠️ 画板前必读（v1.6）：</strong><br>
+<strong>⚠️ 画板前必读（v1.7）：</strong><br>
 ① <strong>底板你自己设计，一次做完三步</strong>：底板（含负压圆孔+4 个螺丝孔）→ 主板板框与接插件位置→ 灰度子板最后画。<br>
-　　关键尺寸：轮距 75~85mm、灰度前缘→驱动轴 <b>≤45mm</b>、驱动轴→车尾 <b>≤50mm</b>、总长 <b>≤130mm</b>（R200 偏移 d²/(2R) 推出来）<br>
+　　关键尺寸：轮距 75~85mm、灰度排→驱动轴 <b>45mm（取上限，轴后必读“已经转过去的线”）</b>、驱动轴→车尾 <b>≤50mm</b>、总长 <b>≤130mm</b>；子板<b>板宽 ≈88mm（比轮距略宽，先量车壳最大宽度）</b><br>
 ② <strong>IMU 已核实无需切接口</strong>（逐飞 IMU660RC 只有 I2C/SPI，没 UART）→ SPI2 @ <b>9MHz</b>，IMU 座留 <b>8P</b>：3V3/GND/CS/SCK/MISO/MOSI/INT1/INT2。<br>
 　　⚠ 唯一要盯的：模块上 <b>SDO 与 SA0 是同一根脚</b>，SPI 接法下它是 MISO，<b>严禁接地</b>。<br>
 ③ 主板上留 <strong>4 个板边测试盘（3.3V/VM/GND/空闲）</strong>——你说过"电机会因为震动突然断电"，查这个必须能夹表笔。<br>
 ④ 主板用铜柱<strong>架在底板上方</strong>：既当加强梁防"开负压后底板变形、轮子外八"，又当负压腔上盖支撑。<br>
-⑤ <strong>子板单 3.3V（v1.6）</strong>：发射管、LM393 VCC、上拉、阈值、指示灯全接 3V3；接收管上拉<b>一分为二（20k+20k）</b>把节点钳到 1.65V；排针 <b>10P = 8DO / 3V3 / GND</b>，<b>子板上没得选电压，所以不可能接错</b>。单路元件值见框架定稿 §2.4。
+⑤ <strong>子板双轨（v1.7 定稿）</strong>：发射管与 4 片 LM393 的 VCC 接 <b>5V</b>；接收管上拉 10k、阈值电位器、输出上拉 4.7k、指示灯 470Ω 全接 <b>3V3</b>；排针 <b>11P = 8DO / GND / 3V3 / 5V</b>（5V 最外端防插错）。⚠ <b>模块必须 5V，4.7V 会让共模上限只到 3.2V 而黑态节点是 3.3V</b>。单路元件值与子板坐标见框架定稿 §2.4 / §2.5。
 </div>
 
 <p style="text-align:center;margin-top:14px;font-size:11px;color:#999;">
-B 车 · C8T6 自画板引脚图 <b>v1.6</b> · 2026-10-02 · 依据：N30(11.1V/33000rpm/200gf·cm/堵转&lt;15A) + 逐飞迷你编码器 Pro 1024P/R(<b>装轮轴</b>) + 逐飞 IMU660RC(LSM6DSV16X，<b>已核实无 UART</b>) + <b>ITR9909</b>(已核实：IC(ON)≥200µA@IF=20mA/6mm、tr=tf=15µs) + 负压风机 5Ω（扇叶/支架已有）· <b>子板单 3.3V</b>
+B 车 · C8T6 自画板引脚图 <b>v1.7</b> · 2026-10-02 · 依据：N30(11.1V/33000rpm/200gf·cm/堵转&lt;15A) + 逐飞迷你编码器 Pro 1024P/R(<b>装轮轴</b>) + 逐飞 IMU660RC(LSM6DSV16X，<b>已核实无 UART</b>) + <b>ITR9909</b>(已核实：IC(ON)≥200µA@IF=20mA/6mm、tr=tf=15µs) + 负压风机 5Ω（扇叶/支架已有）· <b>子板 5V+3.3V 双轨，原理图定稿</b>
 </p>
 
 </div>
