@@ -1,0 +1,17 @@
+# Python caches
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Local assistant state
+.agents/
+.codex/
+
+# Backups and temporary files
+*.7z
+*.bak
+*.tmp
+*~
+.DS_Store
+Thumbs.db
+desktop.ini

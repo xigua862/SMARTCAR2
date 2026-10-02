@@ -1,0 +1,36 @@
+uint8 show[MT9V03X_H][MT9V03X_W];
+uint8 image_use[MT9V03X_H][MT9V03X_W];
+uint8 image_see[MT9V03X_H][MT9V03X_W];
+void nitoushi(void)
+{
+    for(uint8 i=0;i<MT9V03X_H;i++)
+    {
+        for(uint8 j=0;j<MT9V03X_W;j++)
+        {
+
+            int x=0,y=0;
+            x=(int)XShowRotimg(j,i);
+            y=(int)YShowRotimg(j,i);
+
+            if (x>=0&&x<MT9V03X_W&&y>=0&&y<MT9V03X_H)
+            {
+
+                if (image_use[y][x]>daj)
+                {
+                    show[i][j]=255;
+                }
+                else if(image_use[y][x]>daj&&j>=80)
+                {
+                    show[i][j]=255;
+                }
+                else
+                {
+                    show[i][j]=0;
+                }
+                //show[i][j]=image_use[y][x];
+            }
+
+
+        }
+    }
+}

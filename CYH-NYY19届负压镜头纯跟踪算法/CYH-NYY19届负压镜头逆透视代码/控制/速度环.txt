@@ -1,0 +1,99 @@
+
+/*******************************************************************************
+ * 函 数 名       :madasudu()    CYH-NYY
+ * 函数功能        :占空比计算
+ * 输    入       : 无
+ * 输    出        : 无
+ *******************************************************************************/
+
+float KP_L = 45, KI_L = 5, KD_L = 0;//7.2v：30,25，20
+float KP_R = 45, KI_R = 5, KD_R = 0;//12v：190，30，10
+
+float L_err[3] = {0, 0, 0};
+float R_err[3] = {0, 0, 0};
+float L_sum = 0;
+float R_sum = 0;
+float PIDL;
+float PIDR;
+
+
+//累加值限幅
+#define A (4000)
+//占空比限幅
+#define C (9000)
+
+
+//封装马达转速调节 (现在转速，期望转速)
+void madasudu(void)
+{
+
+//    测试速度环-----------------------------------------------------------------------不用管
+    /*
+    if (motortest<=200)
+     {
+         speedtobel=(200-(float)(motortest-200)*(float)(motortest-200)/400);
+         speedtober=0;
+     }
+     else if (motortest<=400)
+     {
+         speedtobel=(200-(float)(motortest-200)*(float)(motortest-200)/400);
+         speedtober=0;
+     }
+    if (motortest>=400)
+    {
+        motortest=0;
+    }
+*/
+
+//    ------------------------------------------------------------------------------
+
+    L_err[2] = L_err[1];
+    L_err[1] = L_err[0];
+    L_err[0] = ((speedtobel - speedl)-dl);
+    L_sum = speedtobel - speedl;
+    dl=speedtobel - speedl;
+
+    R_err[2] = R_err[1];
+    R_err[1] = R_err[0];
+    R_err[0] = ((speedtober - speedr)-dr);
+    R_sum = speedtober - speedr;
+    dr=speedtober - speedr;
+
+    //左右轮pid
+    PIDL=KP_L * L_err[0] + KI_L * L_sum + KD_L * (L_err[0] - L_err[1]);
+    PIDR=KP_R * R_err[0] + KI_R * R_sum + KD_R * (R_err[0] - R_err[1]);
+
+    //左右轮单次限幅
+    if (PIDL > A) // L_sum>1000 L_sum=1000
+        PIDL = A;
+    if (PIDL < -A)
+        PIDL = -A;
+    //左轮限幅
+    if (PIDR > A) // L_sum>1000 L_sum=1000
+        PIDR = A;
+    if (PIDR < -A)
+        PIDR = -A;
+
+        pwml+=PIDL;
+        pwmr+=PIDR;
+    
+//--------------------------------------------------------------------------
+  if (pwml<-C)
+    {
+      pwml=-C;
+    }
+    else if (pwml>C)
+    {
+        pwml=C;
+    }
+
+    if (pwmr<-C)
+    {
+        pwmr=-C;
+    }
+    else if (pwmr>C)
+    {
+        pwmr=C;
+    }
+
+}

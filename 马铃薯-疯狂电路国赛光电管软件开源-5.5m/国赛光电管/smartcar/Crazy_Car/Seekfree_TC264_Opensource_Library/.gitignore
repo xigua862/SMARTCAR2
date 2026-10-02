@@ -1,0 +1,32 @@
+# AURIX Development Studio build and workspace state
+/Debug/
+/Release/
+.metadata/
+*.OneEye
+*.o
+*.d
+*.elf
+*.hex
+
+# Python tooling caches
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Generated telemetry and analysis output
+/output/
+
+# Local assistant and editor state
+.agents/
+.claude/
+.codex/
+
+# Temporary and operating-system files
+*.bak
+*.tmp
+*~
+.DS_Store
+Thumbs.db
+desktop.ini

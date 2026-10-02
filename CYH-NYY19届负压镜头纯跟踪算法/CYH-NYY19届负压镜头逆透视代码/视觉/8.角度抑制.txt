@@ -1,0 +1,14 @@
+// 角度变化率非极大抑制   CYH-NYY
+void nms_angle(float angle_in[], int num, float angle_out[], int kernel)
+{
+    int half = kernel / 2;
+    for (int i = 0; i < num; i++) {
+        angle_out[i] = angle_in[i];
+        for (int j = -half; j <= half; j++) {
+            if (fabs(angle_in[clip(i + j, 0, num - 1)]) > fabs(angle_out[i])) {
+                angle_out[i] = 0;
+                break;
+            }
+        }
+    }
+}

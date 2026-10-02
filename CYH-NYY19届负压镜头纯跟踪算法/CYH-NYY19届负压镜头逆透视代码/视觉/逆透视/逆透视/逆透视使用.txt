@@ -1,0 +1,19 @@
+void touxian(float line[][2],int *num)
+{
+    for (int i=0;i<*num;i++)
+    {
+        int x=0,y=0;
+        x=Xrot_point(line[i][0],line[i][1]);
+        y=Yrot_point(line[i][0],line[i][1]);
+        if (x>=0&&x<MT9V03X_W&&y>=0&&y<MT9V03X_H)
+        {
+            line[i][0]=(float)x;
+            line[i][1]=(float)y;
+        }
+        else
+        {
+            *num=i;
+            break;
+        }
+    }
+}

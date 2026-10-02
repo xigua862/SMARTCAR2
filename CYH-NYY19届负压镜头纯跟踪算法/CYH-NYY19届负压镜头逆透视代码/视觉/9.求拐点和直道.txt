@@ -1,0 +1,58 @@
+CYH-NYY
+
+void guai_mum(float Edge[][2], int num, float ang_out[],int *posi,int *if_zhi)
+{
+    conmax=0;
+    *posi=0;
+    *if_zhi=1;
+    float ang_in[num];
+    local_angle_points(Edge,num,ang_in,5);
+    nms_angle(ang_in,num,ang_out,10);
+
+        for (int i=0;i<num;i++)
+        {
+            if (ang_out[i]==0)continue;
+            int im1 = clip(i - 5, 0, num - 1);
+            int ip1 = clip(i + 5, 0, num - 1);
+            float conf = fabs(ang_out[i]) - (fabs(ang_out[im1]) + fabs(ang_out[ip1])) / 2;
+            if (conf>1.05&&conf<2)
+            {
+                *posi=i;
+            }
+            if (*posi>0)
+            {
+                break;
+            }
+        }
+
+    /*最小二乘法判断直道*/
+    *if_zhi=0;
+    if (num>=25)
+    {
+        float x1=Edge[2][0];
+        float y1=Edge[2][1];
+        float x2=Edge[num-3][0];
+        float y2=Edge[num-3][1];
+        float A=1/(x1-x2);
+        float B=1/(y2-y1);
+        float C=y2/(y1-y2)-x2/(x1-x2);
+        float D=0;
+
+        for (int i=3;i<num-3;i++)
+        {
+            float x0=Edge[i][0];
+            float y0=Edge[i][1];
+            D+=fabs(A*x0+B*y0+C)*fabs(A*x0+B*y0+C)/(A*A+B*B)/(num-6);
+        }
+
+        conmax=D;
+
+        if (D<=2.5)
+        {
+            *if_zhi=1;
+        }
+    }
+
+
+
+}

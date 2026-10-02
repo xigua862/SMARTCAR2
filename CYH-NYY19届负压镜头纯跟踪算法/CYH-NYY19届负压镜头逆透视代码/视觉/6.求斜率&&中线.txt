@@ -1,0 +1,72 @@
+//-------------------------------------------------------------------------------------------------------------------
+// 函数简介     获取中线     CYH-NYY
+// 参数说明
+// 返回参数
+// 使用示例     get_mid(输入边线,输出边线,边线点数量);
+// 备注信息
+//-------------------------------------------------------------------------------------------------------------------
+float Lin_MID[50][2];     //左中线结构体
+float Lout_MID[50][2];
+float Rin_MID[50][2];     //左中线结构体
+float Rout_MID[50][2];
+int Lmidnum=0,Lmidnum2=0;
+int Rmidnum=0,Rmidnum2=0;
+
+void get_mid_L(float line[][2],int num,float mid[][2],int *num2,int approx_num)
+{
+    int mnum=1;
+    float dist=rood_wid/2;
+    mid[0][0]=MT9V03X_W/2-2;
+    mid[0][1]=MT9V03X_H-2;
+    for (int i = 0; i < num; i++)
+    {
+        float dx = line[clip(i + approx_num, 0, num - 1)][0] - line[clip(i - approx_num, 0, num - 1)][0];
+        float dy = line[clip(i + approx_num, 0, num - 1)][1] - line[clip(i - approx_num, 0, num - 1)][1];
+        float dn = sqrt(dx * dx + dy * dy);
+        dx /= dn;
+        dy /= dn;
+        if (line[i][1] + dx * dist>MT9V03X_H-2) continue;
+        else
+        {
+            mid[mnum][0] = line[i][0] - dy * dist;
+            mid[mnum][1] = line[i][1] + dx * dist;
+        }
+        mnum++;
+    }
+    *num2=mnum;
+}
+
+void get_mid_R(float line[][2],int num,float mid[][2],int *num2,int approx_num)
+{
+    int mnum=1;
+    float dist=rood_wid/2;
+    mid[0][0]=MT9V03X_W/2-2;
+    mid[0][1]=MT9V03X_H-2;
+    for (int i = 0; i < num; i++)
+    {
+        float dx = line[clip(i + approx_num, 0, num - 1)][0] - line[clip(i - approx_num, 0, num - 1)][0];
+        float dy = line[clip(i + approx_num, 0, num - 1)][1] - line[clip(i - approx_num, 0, num - 1)][1];
+        float dn = sqrt(dx * dx + dy * dy);
+        dx /= dn;
+        dy /= dn;
+        if (line[i][1] - dx * dist>MT9V03X_H-2) continue;
+        else
+        {
+            mid[mnum][0] = line[i][0] + dy * dist;
+            mid[mnum][1] = line[i][1] - dx * dist;
+        }
+        mnum++;
+    }
+    *num2=mnum;
+}
+
+
+
+int clip(int x, int low, int up) {
+    return x > up ? up : x < low ? low : x;
+}
+
+float fclip(float x, float low, float up) {
+    return x > up ? up : x < low ? low : x;
+}
+

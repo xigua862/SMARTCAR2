@@ -1,0 +1,128 @@
+%此函数只需修改 RESULT_H RESULT_W CENTER_Y,CENTER_Y相
+
+%调整出满意的图像后将 rot 复制进 ATG_Dealline 里观察 左右边线平移出的中线是否重合。
+%IF.GINPUT=0时为手动输入，IF.GINPUT=1时为鼠标输入坐标(粗调)
+close all;
+clc;
+
+clear;
+
+img= imread('C:\Users\22503\Desktop\tzk\cyh\代码\逆透视\样本\150度\十字.jpg');
+img= im2gray(img);
+img = double(img);
+[ORI_HIGH , ORI_WIDTH] = size(img);
+
+%显示结果方式
+Show_Res=0;
+
+%调整结果图大小
+RESULT_H = 120;
+RESULT_W = 188;
+
+%CENTER_X=RESULT_W/2+5;%默认正方形投影中心为一半
+
+IF.GINPUT=0;%IF.GINPUT=1时为手动输入，IF.GINPUT=0时为鼠标输入坐标(粗调)
+
+
+%CENTER_Y=80;%正方形中心y
+RECT_LEN=45;%正方形占像素大小
+
+if IF.GINPUT==0
+subplot(2,2,1)
+imshow(uint8(img));
+dot=ginput(4);
+CENTER_Y=input("正方形中心y=");
+x = [dot(1,1),dot(2,1),dot(3,1),dot(4,1)];
+y = [dot(1,2),dot(2,2),dot(3,2),dot(4,2)];
+end
+
+
+
+if IF.GINPUT==1
+%CENTER_Y=82;   
+CENTER_Y=input("正方形中心y=");
+x=[69  120   48  141];
+y=[38   39   71   73];
+% 左上 右上 左下 右下 的纵坐标
+end
+
+
+CENTER_X=RESULT_W/2;
+%CENTER_X=(x(1)+x(2)+x(3)+x(4))/4;
+X=[CENTER_X-RECT_LEN/2,CENTER_X+RECT_LEN/2,CENTER_X-RECT_LEN/2,CENTER_X+RECT_LEN/2];  % 左上 右上 左下 右下 变换后的横坐标 
+Y=[CENTER_Y-RECT_LEN/2,CENTER_Y-RECT_LEN/2,CENTER_Y+RECT_LEN/2,CENTER_Y+RECT_LEN/2];  % 左上 右上 左下 右下 变换后的纵坐标 
+tablex= zeros(RESULT_H,RESULT_W);
+tabley= zeros(RESULT_H,RESULT_W);
+out_put = zeros(RESULT_H,RESULT_W);
+[rot,inv_rot]=My_Per_trans(y,x,Y,X);
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+if Show_Res==1
+for i=1:ORI_WIDTH
+for j=1:ORI_HIGH
+X1 = (j * inv_rot(1,1) + i * inv_rot(1,2) + inv_rot(1,3)) / (j * inv_rot(3,1) + i * inv_rot(3,2) + 1);
+Y1 = (j * inv_rot(2,1) + i * inv_rot(2,2) + inv_rot(2,3)) / (j * inv_rot(3,1) + i * inv_rot(3,2) + 1);
+X=round(X1);
+Y=round(Y1);
+if Y>0 && X>0 && Y<RESULT_W && X<RESULT_H
+out_put(j,i) = img(X,Y);
+end
+end
+end
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+else
+for i=1:ORI_WIDTH
+for j=1:ORI_HIGH
+X1 = (j * rot(1,1) + i * rot(1,2) + rot(1,3)) / (j * rot(3,1) + i * rot(3,2) + rot(3,3));
+Y1 = (j * rot(2,1) + i * rot(2,2) + rot(2,3)) / (j * rot(3,1) + i * rot(3,2) + rot(3,3));
+X=round(X1);
+Y=round(Y1);
+if Y>0 && X>0 && Y<RESULT_W && X<RESULT_H
+out_put(X,Y) = img(j,i);
+end
+end
+end
+end
+
+rot=round(rot,4)%%取小数点后4位
+inv_rot=round(inv_rot,4)%%取小数点后4位
+%图显
+if IF.GINPUT==0
+subplot(2,2,1)
+imshow(uint8(img));
+hold on;
+end
+
+subplot(2,2,2)
+imshow(uint8(out_put));
+clc;   
+
+
+fprintf('const float rot[3][3]={\n{%10.4f,%10.4f,%10.4f},\n{%10.4f,%10.4f,%10.4f},\n{%10.4f,%10.4f,%10.4f}\n                      };\n\n',rot(1,1),rot(1,2),rot(1,3),rot(2,1),rot(2,2),rot(2,3),rot(3,1),rot(3,2),rot(3,3));
+fprintf('const float inv_rot[3][3]={\n{%10.4f,%10.4f,%10.4f},\n{%10.4f,%10.4f,%10.4f},\n{%10.4f,%10.4f,%10.4f}\n                          };\n\n',inv_rot(1,1),inv_rot(1,2),inv_rot(1,3),inv_rot(2,1),inv_rot(2,2),inv_rot(2,3),inv_rot(3,1),inv_rot(3,2),inv_rot(3,3));
+
+
+hold on;
+
+
+function [Hd,H] = My_Per_trans(x,y,X,Y)
+
+A = [X(1),Y(1),1,0,0,0,-x(1)*X(1),-x(1)*Y(1);
+    0,0,0,X(1),Y(1),1,-y(1)*X(1),-y(1)*Y(1);
+    X(2),Y(2),1,0,0,0,-x(2)*X(2),-x(2)*Y(2);
+    0,0,0,X(2),Y(2),1,-y(2)*X(2),-y(2)*Y(2);
+    X(3),Y(3),1,0,0,0,-x(3)*X(3),-x(3)*Y(3);
+    0,0,0,X(3),Y(3),1,-y(3)*X(3),-y(3)*Y(3);
+    X(4),Y(4),1,0,0,0,-x(4)*X(4),-x(4)*Y(4);
+    0,0,0,X(4),Y(4),1,-y(4)*X(4),-y(4)*Y(4)];
+
+B = [x(1);y(1);x(2);y(2);x(3);y(3);x(4);y(4)];
+
+H=A\B;  % 求解H11到H18
+H=H';  % 把列向量改成行向量
+H=[H,1];  % 获得完整的H的行向量
+
+H11 =H(1);H12 =H(2); H13 =H(3); H21 =H(4); H22 =H(5); H23 =H(6); H31 =H(7); H32 =H(8); H33=H(9);
+H=[H11,H12,H13;H21,H22,H23;H31,H32,H33];  % 获得完整的H的矩阵
+Hd=inv(H);  % 获得Hd矩阵
+end

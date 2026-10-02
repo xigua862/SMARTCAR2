@@ -1,0 +1,34 @@
+# ===== 参考资料压缩包（几十 MB，不进 git）=====
+*.zip
+*.7z
+*.rar
+*.tar
+*.tar.gz
+
+# ===== 编译产物 / 烧录文件 =====
+*.hex
+*.axf
+*.bin
+*.map
+*.lnp
+*.dep
+*.htm
+
+# ===== Keil MDK-ARM 中间文件 =====
+MDK-ARM/test16/
+MDK-ARM/Objects/
+MDK-ARM/Listings/
+*.o
+*.d
+*.crf
+*.lst
+*.sct
+
+# ===== 编辑器 / 工程临时 =====
+*.uvguix.*
+*.dbgconf
+RTE/
+
+# ===== 系统 =====
+Thumbs.db
+Desktop.ini

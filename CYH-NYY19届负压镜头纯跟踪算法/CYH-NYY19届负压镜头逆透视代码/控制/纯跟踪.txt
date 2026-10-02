@@ -1,0 +1,61 @@
+
+//-------------------------------------------------------------------------------------------------------------------
+// 函数简介     获取偏差值
+// 参数说明
+// 返回参数
+// 使用示例     get_error();
+// 备注信息
+//-------------------------------------------------------------------------------------------------------------------
+
+void get_error(void)
+{
+    int qianzhan=yumao;           //设定预锚点距离
+
+    if (xunxian_dir==-1)             //dir=-1代表巡左边线
+    {
+        if (Lmidnum2>qianzhan)       //如果左中线长度长于预锚点距离，使用预锚点计算误差
+        { 
+             float dx=Lout_MID[qianzhan][0]-MT9V03X_W/2+2,dy=MT9V03X_H+20-2-Lout_MID[qianzhan][1];
+             error=1*atan2f(dx, dy) * 180 / PI;
+        }
+        else                                           //如果左中线长度短于预锚点距离，使用最远中线点点计算误差
+        {
+            float dx=Lout_MID[Lmidnum2-1][0]-MT9V03X_W/2+2,dy=MT9V03X_H+20-2-Lout_MID[Lmidnum2-1][1];
+            error=1*atan2f(dx, dy) * 180 / PI;
+        }
+    }
+    else if (xunxian_dir==1)      //dir=1代表巡右边线
+    {
+        if (Rmidnum2>qianzhan)    //如果右中线长度长于预锚点距离，使用预锚点计算误差
+        {
+             float dx=Rout_MID[qianzhan][0]-MT9V03X_W/2+2,dy=MT9V03X_H+20-2-Rout_MID[qianzhan][1];
+             error=1*atan2f(dx, dy) * 180 / PI;
+        }
+        else                                         //如果右中线长度短于预锚点距离，使用最远中线点点计算误差
+        {
+            float dx=Rout_MID[Rmidnum2-1][0]-MT9V03X_W/2+2,dy=MT9V03X_H+20-2-Rout_MID[Rmidnum2-1][1];
+            error=1*atan2f(dx, dy) * 180 / PI;
+        }
+    }
+
+
+    //如果巡线方向的中线点个数大于四个，更新舵机打角
+    if ((xunxian_dir==-1&&Lout_count>4)||(xunxian_dir==1&&Rout_count>4))
+    {
+
+//        P_fx=Fuzzy_P(error,(error-error_last));
+        duty= -P_fx*error-D_fx*(error-error_last);
+    }
+
+    error_last=error;
+
+    //舵机打角限幅
+    if (duty<-70)
+    {
+        duty=-70;
+    }
+    if (duty>70)
+    {
+        duty=70;
+    }
+}

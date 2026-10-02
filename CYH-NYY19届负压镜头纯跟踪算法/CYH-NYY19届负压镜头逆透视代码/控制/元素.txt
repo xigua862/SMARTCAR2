@@ -1,0 +1,416 @@
+#include "zf_common_headfile.h"
+#include "cyh_headfile.h"
+
+// **************************** 代码区域 ****************************
+
+
+
+int xunxian_dir=0;
+
+int yuanhuan=0,dir_yuanhuan=0,suo=0;
+int shizi=0,len_shizi=0;
+
+
+int yanshi=0;
+int juli=0;
+
+int banmacishu=0;
+int qipao=0;
+int qipaojuli=0;
+
+int luzhang=0;
+int luzhangjuli=0;
+int dir_luzhang=0;
+
+int podao=0;
+int pochang=0;
+int poyanshi=0;
+
+int jian=0,jianms=0;
+
+
+void if_po(void)
+{
+    if (dl1b_distance_mm<=400&&lw<=5&&podao==0)
+    {
+        podao=1;
+        pochang=0;
+        poyanshi=0;
+    }
+    if (podao==1)
+    {
+        pochang+=speedl+speedr;
+        if (pochang>=40000)
+        {
+            podao=2;
+        }
+    }
+    if (podao==2)
+    {
+        poyanshi++;;
+        if (poyanshi>=100)
+        {
+            podao=0;
+        }
+
+    }
+
+
+}
+
+
+void jiansu(void)
+{
+    if (banmacishu>=1&&jian==0)
+    {
+        jianms++;
+    }
+    if (jianms>=500)
+    {
+        jian=1;
+        jianms=0;
+    }
+}
+
+
+void if_banmaxian(void)
+{
+    int tiaobian=0;
+    for (int16 i=5;i<183;i++)
+    {
+        if (image_use[MT9V03X_H-36][i]>=daj&&image_use[MT9V03X_H-36][i+1]<daj)
+        {
+            tiaobian++;
+        }
+    }
+    if (tiaobian>=7&&qipao==0)
+    {
+        qipao=1;
+    }
+    if (qipao==1)
+    {
+        qipaojuli+=speedl+speedr;
+        if (qipaojuli>=8000)
+        {
+            qipao=0;
+            qipaojuli=0;
+            banmacishu++;
+        }
+    }
+}
+
+void if_luzhang(void)
+{
+    if (banmacishu>=1&&podao==0&&qipao==0&&luzhang==0&&yuanhuan==0&&shizi==0&&(ifzhi_L==1||ifzhi_R==1))
+    {
+        float Lx=0,Rx=188,lukuan=0;
+        float h=inv_rot_y(94,60);
+        h=119-h;
+        for (int16 i=(int16)lwline;i>0;i--)
+        {
+
+            if ((cbh(i,MT9V03X_H-h-1,6)==1&&cbh(i+1,MT9V03X_H-h-1,6)==1&&cbh(i+2,MT9V03X_H-h-1,6)==1&&cbh(i+3,MT9V03X_H-h-1,6)==1&&cbh(i+4,MT9V03X_H-h-1,6)==0)||i<=8)
+            {
+               Lx=i+4;
+                break;
+            }
+        }
+        for (int16 i=(int16)lwline;i<MT9V03X_W;i++)
+        {
+            if ((cbh(i,MT9V03X_H-h-1,2)==1&&cbh(i-1,MT9V03X_H-h-1,2)==1&&cbh(i-2,MT9V03X_H-h-1,2)==1&&cbh(i-3,MT9V03X_H-h-1,2)==1&&cbh(i-4,MT9V03X_H-h-1,2)==0)||i>=180)
+            {
+                Rx=i-4;
+                break;
+            }
+        }
+        lukuan=Xrot_point(Rx,MT9V03X_H-h-1)-Xrot_point(Lx,MT9V03X_H-h-1);
+        if (lukuan<=37)
+        {
+            luzhang=1;
+            if (ifzhi_L==1)
+            {
+                dir_luzhang=1;
+            }
+            else if (ifzhi_R==1)
+            {
+                dir_luzhang=-1;
+            }
+        }
+    }
+
+    if (luzhang==1)
+    {
+        luzhangjuli+=speedl+speedr;
+        if (luzhangjuli>=18000)
+        {
+            luzhang=0;
+            luzhangjuli=0;
+            dir_luzhang=0;
+        }
+    }
+
+
+}
+
+
+void if_yuanhuan(void)
+{
+    if (podao==0&&luzhang==0&&yuanhuan==0&&shizi==0)
+    {
+        if (ifzhi_L==1&&ang_numR>0&&ang_numR<5)
+        {
+            yuanhuan=1;
+            dir_yuanhuan=1;
+            suo=0;
+        }
+
+        if (ifzhi_R==1&&ang_numL>0&&ang_numL<5)
+        {
+            yuanhuan=1;
+            dir_yuanhuan=-1;
+            suo=0;
+        }
+    }
+
+    if (yuanhuan==1)
+    {
+        juli+=speedl+speedr;
+        if (((dir_yuanhuan==1&&Rout_count>10&&ang_numR==0)||(dir_yuanhuan==-1&&Lout_count>10&&ang_numL==0))&&juli>14000)
+        {
+            yuanhuan=2;
+            juli=0;
+        }
+    }
+
+    if (yuanhuan==2)
+    {
+        juli+=speedl+speedr;
+        if (juli>20000)
+        {
+            if (ifzhi_L==1||ifzhi_R==1)
+            {
+                yuanhuan=3;
+                juli=0;
+            }
+        }
+    }
+
+    if (yuanhuan==3)
+    {
+        juli+=speedl+speedr;
+        if (juli>=20000)
+        {
+            yuanhuan=0;
+            yanshi=0;
+            juli=0;
+        }
+    }
+}
+
+
+void if_shizi(void)
+{
+    if (podao==0&&luzhang==0&&yuanhuan==0&&shizi==0)
+    {
+        if ((ang_numR>0&&ang_numR<5&&Lout_count<8)||(ang_numL>0&&ang_numL<5&&Rout_count<8)||(ang_numR>0&&ang_numR<5&&ang_numL>0&&ang_numL<5))
+        {
+            shizi=1;
+        }
+    }
+
+    if (shizi==1)
+    {
+        len_shizi+=speedl+speedr;
+    }
+
+    if (len_shizi>14000)
+    {
+        len_shizi=0;
+        shizi=0;
+    }
+
+    if (shizi==1)
+    {
+        int h=0;
+        if (ang_numR>0)
+        {
+            h=inv_rot_y(Ruse_edge[ang_numR][0],Ruse_edge[ang_numR][1]-55);
+            h=119-h;
+        }
+        else if (ang_numL>0)
+        {
+            h=inv_rot_y(Luse_edge[ang_numL][0],Luse_edge[ang_numL][1]-55);
+            h=119-h;
+        }
+        else
+        {
+            h=inv_rot_y(94,119-50);
+            h=119-h;
+        }
+
+        get_BLY(L_edge,&L_count,R_edge,&R_count,h);
+
+        //**********************************边线逆透视
+        touxian(L_edge,&L_count);
+        touxian(R_edge,&R_count);
+
+        //**********************************边线滤波
+        blur_points(L_edge,Lout_edge,L_count,3);
+        blur_points(R_edge,Rout_edge,R_count,3);
+        //**********************************边线重采样
+        Lout_count=L_count*2;
+        Rout_count=R_count*2;
+        resample_points2(L_edge,L_count,Luse_edge,&Lout_count,3);
+        resample_points2(R_edge,R_count,Ruse_edge,&Rout_count,3);
+    }
+
+}
+
+
+
+
+void search_bianxian(void)
+{
+    if (qipao==0)
+    {
+        get_BLY(L_edge,&L_count,R_edge,&R_count,40);
+
+        //**********************************边线逆透视
+        touxian(L_edge,&L_count);
+        touxian(R_edge,&R_count);
+
+        //**********************************边线滤波
+        blur_points(L_edge,Lout_edge,L_count,3);
+        blur_points(R_edge,Rout_edge,R_count,3);
+
+        //**********************************边线重采样
+        Lout_count=L_count*2;
+        Rout_count=R_count*2;
+        resample_points2(L_edge,L_count,Luse_edge,&Lout_count,3);
+        resample_points2(R_edge,R_count,Ruse_edge,&Rout_count,3);
+
+
+        //**********************************找拐点
+
+        guai_mum(Luse_edge,Lout_count,ang_L,&ang_numL,&ifzhi_L);
+        guai_mum(Ruse_edge,Rout_count,ang_R,&ang_numR,&ifzhi_R);
+        if (ang_numL>0)
+        {
+            Lout_count=ang_numL;
+        }
+        if (ang_numR>0)
+        {
+            Rout_count=ang_numR;
+        }
+
+
+
+
+    }
+    else if (qipao==1)
+    {
+        int h=inv_rot_y(94,100);
+        h=119-h;
+        get_BLY(L_edge,&L_count,R_edge,&R_count,h);
+
+        //**********************************边线逆透视
+        touxian(L_edge,&L_count);
+        touxian(R_edge,&R_count);
+        //**********************************边线滤波
+        blur_points(L_edge,Lout_edge,L_count,3);
+        blur_points(R_edge,Rout_edge,R_count,3);
+        //**********************************边线重采样
+        Lout_count=L_count*2;
+        Rout_count=R_count*2;
+        resample_points2(L_edge,L_count,Luse_edge,&Lout_count,3);
+        resample_points2(R_edge,R_count,Ruse_edge,&Rout_count,3);
+        //**********************************找拐点
+        guai_mum(Luse_edge,Lout_count,ang_L,&ang_numL,&ifzhi_L);
+        guai_mum(Ruse_edge,Rout_count,ang_R,&ang_numR,&ifzhi_R);
+        if (ang_numL>0)
+        {
+            Lout_count=ang_numL;
+        }
+        if (ang_numR>0)
+        {
+            Rout_count=ang_numR;
+        }
+    }
+}
+
+
+void xunxain_celue(void)
+{
+
+    if (Lmidnum2>Rmidnum2)
+    {
+        xunxian_dir=-1;
+    }
+    else
+    {
+        xunxian_dir=1;
+    }
+
+    if (yuanhuan==1)
+    {
+        xunxian_dir=-dir_yuanhuan;
+    }
+
+    if (yuanhuan==2)
+    {
+        /**/
+        if (dir_yuanhuan==1)
+        {
+            if (Rout_count>3)
+            {
+                xunxian_dir=dir_yuanhuan;
+            }
+            else if (ang_numL==0&&suo==0)
+            {
+                xunxian_dir=-dir_yuanhuan;
+            }
+            else
+            {
+                suo=1;
+                xunxian_dir=dir_yuanhuan;
+            }
+        }
+
+
+        if (dir_yuanhuan==-1)
+        {
+            if (Lout_count>5)
+            {
+                xunxian_dir=dir_yuanhuan;
+            }
+            else if (ang_numR==0&&suo==0)
+            {
+                xunxian_dir=-dir_yuanhuan;
+            }
+            else
+            {
+                suo=1;
+                xunxian_dir=dir_yuanhuan;
+            }
+        }
+
+    }
+
+    if (yuanhuan==3)
+    {
+        xunxian_dir=-dir_yuanhuan;
+    }
+
+    if (luzhang==1)
+    {
+        xunxian_dir=-dir_luzhang;
+        if (xunxian_dir==1)
+        {
+            Rout_MID[yumao][0]+=20;
+        }
+        else if (xunxian_dir==-1)
+        {
+            Lout_MID[yumao][0]-=20;
+        }
+    }
+}

@@ -1,0 +1,2 @@
+# The exact backend and the bounded fast fallback both use HiGHS.
+highspy==1.11.0

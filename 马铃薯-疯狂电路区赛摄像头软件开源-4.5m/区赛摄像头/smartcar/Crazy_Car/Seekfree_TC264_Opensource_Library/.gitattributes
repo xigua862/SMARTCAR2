@@ -1,0 +1,29 @@
+* text=auto eol=lf
+
+*.c text eol=lf
+*.h text eol=lf
+*.lsl text eol=lf
+*.txt text eol=lf
+*.md text eol=lf
+*.xml text eol=lf
+*.project text eol=lf
+*.cproject text eol=lf
+*.prefs text eol=lf
+*.ini text eol=lf
+*.launch text eol=lf
+*.gitignore text eol=lf
+
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+*.a binary
+*.elf binary
+*.hex binary
+*.bin binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.bmp binary
+*.ico binary
+*.pdf binary

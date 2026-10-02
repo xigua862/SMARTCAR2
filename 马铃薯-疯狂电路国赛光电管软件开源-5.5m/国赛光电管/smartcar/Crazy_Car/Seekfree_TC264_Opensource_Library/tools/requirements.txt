@@ -1,0 +1,6 @@
+# Serial capture support used by telemetry_capture.py.
+pyserial>=3.5
+
+# Plotting and numerical support used by the simulation tools.
+matplotlib>=3.7
+numpy>=1.24
