@@ -39,7 +39,7 @@
 <div class="container">
 
 <h1>🔌 B 车 · STM32F103C8T6 自画板 引脚图</h1>
-<p class="subtitle">v1 · 2026-10-02 · 配套《框架定稿-B车C8T6-20261002.md》· 物理脚号以立创库/数据手册为准，本表锁功能映射</p>
+<p class="subtitle">v1.1 · 2026-10-02 · 配套《框架定稿-B车C8T6-20261002.md》· 物理脚号以立创库/数据手册为准，本表锁功能映射</p>
 
 <div class="legend">
   <span class="lg-sensor">■ 灰度/编码器</span>
@@ -77,14 +77,14 @@
   <tr><td class="pin">PB1</td><td class="sig c-resv">FAN_IN1（预留）</td><td>OUT</td><td class="c-warn">❌ 非FT</td><td class="c-resv">AT8236#3 焊盘（不贴）</td><td style="text-align:left" rowspan="2">负压风机退路：焊盘留好、引脚引到排针，将来焊上就能用</td></tr>
   <tr><td class="pin">PB2</td><td class="sig c-resv">FAN_IN2（预留）</td><td>OUT</td><td class="c-resv">—</td><td class="c-resv">同上</td></tr>
 
-  <tr><td colspan="6" class="section-title">③ 编码器 —— 逐飞增量式迷你编码器 Pro · 1024 P/R · 磁感应 · 正交 A/B</td></tr>
-  <tr><td class="pin">PA15</td><td class="sig c-sensor">L_ENC_A</td><td>IN</td><td class="c-sensor">✅ FT</td><td class="c-sensor">左编码器 A</td><td style="text-align:left" rowspan="4">TIM2 部分重映射 CH1/CH2 + TIM3 部分重映射 CH1/CH2，硬件正交计数、不开中断<br>⚠ <b>PA15/PB3/PB4 默认是 JTAG 脚</b> → 固件第一件事禁 JTAG 保留 SWD：<span class="sig">AFIO-&gt;MAPR |= (2u&lt;&lt;24)</span><br>✅ 这 4 个脚都是 FT → 编码器可以 5V 供电<br>⚠ 装电机轴时 33000rpm → <b>563kHz</b>，16 位计数器 <b>29ms 溢出</b> → 速度环周期定死 <b>10ms</b><br>★ 减速比不用知道：推车 1.00m 数脉冲，得到 mm/pulse 存 EEPROM</td></tr>
+  <tr><td colspan="6" class="section-title">③ 编码器 —— 逐飞增量式迷你编码器 Pro · 1024 P/R · 磁感应 · 正交 A/B · <b>★已确认装在轮轴</b></td></tr>
+  <tr><td class="pin">PA15</td><td class="sig c-sensor">L_ENC_A</td><td>IN</td><td class="c-sensor">✅ FT</td><td class="c-sensor">左编码器 A</td><td style="text-align:left" rowspan="4">TIM2 部分重映射 CH1/CH2 + TIM3 部分重映射 CH1/CH2，硬件正交计数、不开中断<br>⚠ <b>PA15/PB3/PB4 默认是 JTAG 脚</b> → 固件第一件事禁 JTAG 保留 SWD：<span class="sig">AFIO-&gt;MAPR |= (2u&lt;&lt;24)</span><br>✅ 这 4 个脚都是 FT → 编码器可以 5V 供电<br>★ <b>装轮轴 = 减速比彻底不用知道</b>：<span class="sig">mm/count = π·D / 4096</span>（D=32mm → 0.0245），只需卡尺量轮径<br>★ 频率核算（v1.1 更正）：v=1.2m/s、D=32mm → 12.2kHz、4× 后 48.9k count/s → 16 位<b>溢出周期 1.34s</b>，彻底宽松<br>　10ms 窗口 = 489 count → 分辨率 0.2% ✅　→ 控制周期仍定 <b>10ms</b>（为响应性，不再为溢出）<br>⚠ 轮轴编码器的代价：<b>打滑时里程虚高</b> → 圆环/终点判据必须叠陀螺角度积分兜底</td></tr>
   <tr><td class="pin">PB3</td><td class="sig c-sensor">L_ENC_B</td><td>IN</td><td class="c-sensor">✅ FT</td><td class="c-sensor">左编码器 B</td></tr>
   <tr><td class="pin">PB4</td><td class="sig c-sensor">R_ENC_A</td><td>IN</td><td class="c-sensor">✅ FT</td><td class="c-sensor">右编码器 A</td></tr>
   <tr><td class="pin">PB5</td><td class="sig c-sensor">R_ENC_B</td><td>IN</td><td class="c-sensor">✅ FT</td><td class="c-sensor">右编码器 B</td></tr>
 
-  <tr><td colspan="6" class="section-title">④ 陀螺仪（现成模块，排针立装 + 减震柱）</td></tr>
-  <tr><td class="pin">PB13</td><td class="sig c-comm">SPI2_SCK</td><td>OUT</td><td class="c-sensor">✅ FT</td><td class="c-comm">IMU SCK</td><td style="text-align:left" rowspan="4">★ <b>用 SPI 不用 I2C</b>：I2C 会抢掉唯一的遥测串口，且震动环境易掉线<br>IMU 区离风机 ≥40mm、四角减震柱（作者原话：扇叶共振→螺丝松→陀螺漂）<br>模块若为 I2C 款，改接 PB6/PB7 则串口必须挪到 PA9/PA10</td></tr>
+  <tr><td colspan="6" class="section-title">④ 陀螺仪 —— 逐飞 IMU660R（LSM6DSV16X）· 现成模块排针立装 + 减震柱</td></tr>
+  <tr><td class="pin">PB13</td><td class="sig c-comm">SPI2_SCK</td><td>OUT</td><td class="c-sensor">✅ FT</td><td class="c-comm">IMU SCK</td><td style="text-align:left" rowspan="4">★ <b>必须跑 SPI</b>，⚠ 逐飞模块出厂默认往往是 <b>UART</b> → <b>画板前先查怎么切 SPI（上位机或上电拉脚）</b><br>为何不能用 UART：LQFP48 只有 USART1+USART2（无 UART4/5），而 USART2=PA2/PA3 与灰度直接撞车<br>　→ 实在切不了：IMU 占 USART1(PA9/PA10)，遥测退 USART2(PA2/PA3)，灰度重排为 PA0,PA1,PA4~PA7+PB0,PB1<br>模块直出四元数 → <b>姿态解算不用自己写</b>；imu.c 只读陀螺 Z + 四元数 yaw 就够<br>IMU 区离风机 ≥40mm、四角减震柱、板面印方向箭头（方向错 = 角度符号反）</td></tr>
   <tr><td class="pin">PB14</td><td class="sig c-comm">SPI2_MISO</td><td>IN</td><td class="c-sensor">✅ FT</td><td class="c-comm">IMU MISO</td></tr>
   <tr><td class="pin">PB15</td><td class="sig c-comm">SPI2_MOSI</td><td>OUT</td><td class="c-sensor">✅ FT</td><td class="c-comm">IMU MOSI</td></tr>
   <tr><td class="pin">PB12</td><td class="sig c-comm">SPI2_NSS</td><td>OUT</td><td class="c-sensor">✅ FT</td><td class="c-comm">IMU CS</td></tr>
@@ -139,14 +139,16 @@
 </div>
 
 <div class="danger">
-<strong>⚠️ 画板前必须先看两件事：</strong><br>
-① <strong>顺序：先定车架 → 再定板框与接插件位置 → 再画板。</strong>车架你打算用牛爷爷开源件，安装孔距/板槽尺寸决定主板外形；反过来做大概率改一次板（3~5 天）。<br>
-② <strong>灰度子板最后画</strong>（离地 3~8mm、遮光、阈值要实测改版）。<br>
-③ 主板上留 <strong>4 个板边测试盘（3.3V/VM/GND/空闲）</strong>——你说过"电机会因为震动突然断电"，查这个必须能夹表笔。
+<strong>⚠️ 画板前必读（v1.1）：</strong><br>
+① <strong>底板你自己设计，一次做完三步</strong>：底板（含负压圆孔+4 个螺丝孔）→ 主板板框与接插件位置→ 灰度子板最后画。<br>
+　　关键尺寸：轮距 75~85mm、灰度前缘→驱动轴 <b>≤45mm</b>、驱动轴→车尾 <b>≤50mm</b>、总长 <b>≤130mm</b>（R200 偏移 d²/(2R) 推出来）<br>
+② <strong>IMU660R 能否切 SPI —— 画板前 5 分钟查清楚</strong>，否则串口不够用（详见 §④ 表注）。<br>
+③ 主板上留 <strong>4 个板边测试盘（3.3V/VM/GND/空闲）</strong>——你说过"电机会因为震动突然断电"，查这个必须能夹表笔。<br>
+④ 主板用铜柱<strong>架在底板上方</strong>：既当加强梁防"开负压后底板变形、轮子外八"，又当负压腔上盖支撑。
 </div>
 
 <p style="text-align:center;margin-top:14px;font-size:11px;color:#999;">
-B 车 · C8T6 自画板引脚图 v1 · 2026-10-02 · 依据：学长件 N30(11.1V/33000rpm/200gf·cm/堵转&lt;15A) + 逐飞增量式迷你编码器 Pro 1024P/R + 负压风机 5Ω
+B 车 · C8T6 自画板引脚图 <b>v1.1</b> · 2026-10-02 · 依据：N30(11.1V/33000rpm/200gf·cm/堵转&lt;15A) + 逐飞迷你编码器 Pro 1024P/R(<b>装轮轴</b>) + 逐飞 IMU660R(LSM6DSV16X) + 负压风机 5Ω（扇叶/支架已有）
 </p>
 
 </div>
