@@ -38,3 +38,6 @@ RTE/
 # ===== 系统 =====
 Thumbs.db
 Desktop.ini
+
+# ===== 内层嵌套仓库的 .git（已禁用，内容当普通文件管）=====
+**/.git.disabled/

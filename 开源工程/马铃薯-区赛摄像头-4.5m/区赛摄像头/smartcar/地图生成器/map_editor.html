@@ -1,0 +1,3371 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>赛道坐标网格地图编辑器</title>
+<style>
+  :root {
+    --bg: #f6f7fb;
+    --panel: #ffffff;
+    --line: #111;
+    --muted: #666;
+    --blue: #1f5cff;
+    --red: #d90000;
+    --grid-major: #c9ced8;
+    --grid-minor: #e9ecf2;
+    --border: #d6d9e0;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans SC", "Microsoft YaHei", Arial, sans-serif;
+    background: var(--bg);
+    color: #111;
+  }
+
+  header {
+    padding: 12px 16px;
+    background: #111827;
+    color: white;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  header h1 {
+    font-size: 18px;
+    margin: 0 16px 0 0;
+    font-weight: 700;
+  }
+
+  button, input, select, textarea {
+    font-family: inherit;
+  }
+
+  button {
+    border: 1px solid var(--border);
+    background: white;
+    color: #111;
+    border-radius: 8px;
+    padding: 7px 10px;
+    cursor: pointer;
+    font-size: 13px;
+  }
+
+  button:hover { background: #f3f4f6; }
+
+  button.active {
+    background: var(--blue);
+    color: white;
+    border-color: var(--blue);
+  }
+
+  button.danger {
+    color: #b00020;
+  }
+
+  label {
+    font-size: 13px;
+    color: var(--muted);
+  }
+
+  input[type="number"], input[type="text"], select {
+    height: 30px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 2px 6px;
+    background: white;
+  }
+
+  input[type="number"] { width: 84px; }
+
+  .layout {
+    display: grid;
+    grid-template-columns: 1fr 420px;
+    gap: 12px;
+    padding: 12px;
+    height: calc(100vh - 58px);
+  }
+
+  .canvas-panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .canvas-toolbar {
+    padding: 8px 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+  }
+
+  #canvasWrap {
+    flex: 1;
+    position: relative;
+    overflow: auto;
+    background: #fff;
+  }
+
+  canvas {
+    display: block;
+    background: white;
+    cursor: crosshair;
+  }
+
+  .side-panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  .tabs {
+    display: flex;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .tab {
+    flex: 1;
+    padding: 10px;
+    text-align: center;
+    cursor: pointer;
+    font-size: 13px;
+    background: #fafafa;
+    border: 0;
+    border-radius: 0;
+  }
+
+  .tab.active {
+    background: white;
+    color: var(--blue);
+    border-bottom: 2px solid var(--blue);
+  }
+
+  .section {
+    padding: 10px;
+    overflow: auto;
+  }
+
+  .section h2 {
+    margin: 4px 0 10px;
+    font-size: 15px;
+  }
+
+  .row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+    flex-wrap: wrap;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+  }
+
+  th, td {
+    border-bottom: 1px solid #eee;
+    padding: 5px 3px;
+    text-align: left;
+  }
+
+  th {
+    background: #fafafa;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+  }
+
+  td input {
+    width: 64px;
+    height: 26px;
+    font-size: 12px;
+  }
+
+  td input.name {
+    width: 58px;
+  }
+
+  td select {
+    width: 70px;
+    height: 26px;
+    font-size: 12px;
+  }
+
+  .small-btn {
+    font-size: 12px;
+    padding: 4px 6px;
+    border-radius: 6px;
+  }
+
+  textarea {
+    width: 100%;
+    min-height: 260px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 12px;
+    resize: vertical;
+  }
+
+  .status {
+    position: absolute;
+    left: 12px;
+    bottom: 12px;
+    background: rgba(255,255,255,0.92);
+    border: 1px solid var(--border);
+    padding: 8px 10px;
+    border-radius: 8px;
+    font-size: 12px;
+    color: #111;
+    pointer-events: none;
+    line-height: 1.55;
+  }
+
+  .point-editor {
+    position: absolute;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 8px;
+    background: rgba(255,255,255,0.96);
+    border: 1px solid var(--blue);
+    border-radius: 8px;
+    box-shadow: 0 8px 20px rgba(17,24,39,0.15);
+    font-size: 12px;
+    z-index: 2;
+  }
+
+  .point-editor[hidden] {
+    display: none;
+  }
+
+  .point-editor b {
+    max-width: 72px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .point-editor label {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    color: #111;
+  }
+
+  .point-editor input {
+    width: 72px;
+    height: 26px;
+    font-size: 12px;
+  }
+
+  .hint {
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.6;
+  }
+
+  .pill {
+    display: inline-block;
+    padding: 2px 6px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: #fafafa;
+    font-size: 12px;
+  }
+
+  .edge-bad {
+    color: #c00000;
+    font-weight: 700;
+  }
+
+  @media (max-width: 1050px) {
+    .layout {
+      grid-template-columns: 1fr;
+      height: auto;
+    }
+
+    .canvas-panel {
+      height: 70vh;
+    }
+
+    .side-panel {
+      height: 60vh;
+    }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>赛道坐标网格地图编辑器</h1>
+  <button id="modeSelect" class="active">选择/拖动</button>
+  <button id="modeAdd">添加点</button>
+  <button id="modeConnect">连接线</button>
+  <button id="modeDelete">删除</button>
+  <button id="modeRoute">规划路径</button>
+  <button id="undoBtn">撤销</button>
+  <button id="clearBtn" class="danger">清空</button>
+  <label style="color:#cbd5e1;">地图
+    <select id="mapSelect">
+      <option value="juesai" selected>决赛</option>
+      <option value="yusai">预赛</option>
+    </select>
+  </label>
+  <button id="loadMapBtn">重新加载</button>
+  <span class="pill">坐标系：左上角为 (0,0)，向右 x+，向下 y+</span>
+</header>
+
+<div class="layout">
+  <div class="canvas-panel">
+    <div class="canvas-toolbar">
+      <label>宽 mm <input id="mapWidth" type="number" value="3600" step="50"></label>
+      <label>高 mm <input id="mapHeight" type="number" value="2200" step="50"></label>
+      <label>网格 mm <input id="gridStep" type="number" value="50" step="10"></label>
+      <label>吸附 <input id="snapCheck" type="checkbox" checked></label>
+      <label>缩放 px/mm <input id="scaleInput" type="number" value="0.36" step="0.02"></label>
+      <label>显示长度 <input id="lengthCheck" type="checkbox" checked></label>
+      <button id="applyViewBtn">应用画布</button>
+    </div>
+    <div id="canvasWrap">
+      <canvas id="mapCanvas" width="1500" height="1000"></canvas>
+      <div class="point-editor" id="pointEditor" hidden>
+        <b id="pointEditorName"></b>
+        <label>x <input id="pointEditorX" type="number" step="1"></label>
+        <label>y <input id="pointEditorY" type="number" step="1"></label>
+      </div>
+      <div class="status" id="statusBox"></div>
+    </div>
+  </div>
+
+  <div class="side-panel">
+    <div class="tabs">
+      <button class="tab active" data-tab="points">点</button>
+      <button class="tab" data-tab="edges">线</button>
+      <button class="tab" data-tab="route">路径</button>
+      <button class="tab" data-tab="json">JSON</button>
+      <button class="tab" data-tab="help">说明</button>
+    </div>
+
+    <div class="section" id="tab-points">
+      <h2>点列表</h2>
+      <div class="row">
+        <button id="addPointBtn">手动添加点</button>
+        <button id="renumberBtn">按顺序重命名</button>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>名</th>
+            <th>x</th>
+            <th>y</th>
+            <th>类型</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="pointsTable"></tbody>
+      </table>
+    </div>
+
+    <div class="section" id="tab-edges" style="display:none;">
+      <h2>连接线</h2>
+      <div class="hint">红色长度自动按曼哈顿距离计算。若不是水平/竖直线，会标为“斜线”。</div>
+      <table>
+        <thead>
+          <tr>
+            <th>起点</th>
+            <th>终点</th>
+            <th>长度</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="edgesTable"></tbody>
+      </table>
+    </div>
+
+    <div class="section" id="tab-route" style="display:none;">
+      <h2>路径规划</h2>
+      <div class="row">
+        <label>路线</label>
+        <button id="routeSel0" class="small-btn active">路线1</button>
+        <button id="routeSel1" class="small-btn">路线2</button>
+        <button id="routeSel2" class="small-btn">路线3</button>
+      </div>
+      <div class="row">
+        <label>转弯半径 mm <input id="routeRadius" type="number" value="200" step="10" min="10"></label>
+        <label>采样 mm <input id="routeStep" type="number" value="5" step="1" min="1"></label>
+        <label>航向取反 <input id="routeInvert" type="checkbox"></label>
+        <label>共线优化 <input id="routeSkipCollinear" type="checkbox" checked></label>
+        <label>摄像头区最短直道 mm <input id="camZoneMin" type="number" value="500" step="50" min="0" title="连续直道达到此长度才启用摄像头横向纠偏;更短的直道只用惯导;0=关闭摄像头纠偏"></label>
+      </div>
+      <div class="row">
+        <button id="routeEnterBtn">进入选路模式</button>
+        <button id="routePopBtn">后退一步</button>
+        <button id="routeReverseBtn">反转路线</button>
+        <button id="routeClearBtn" class="danger">清空本路线</button>
+      </div>
+      <div class="row">
+        <button id="autoPlanBtn">自动规划（一键三路线）</button>
+        <label>回到发车点 <input id="autoPlanLoop" type="checkbox" checked></label>
+        <label>发车方向 <select id="startDirSel"><option value="">自动(最短)</option></select></label>
+      </div>
+      <div class="hint" id="autoPlanInfo" style="white-space:pre-line;"></div>
+      <div class="row">
+        <button id="playBtn">▶ 播放流向</button>
+        <label>速度 m/s <input id="playSpeed" type="number" value="2" step="0.5" min="0.2" style="width:64px"></label>
+      </div>
+      <div class="hint" id="routeSeq">路线为空。进入“规划路径”模式后,按行进顺序依次点击地图上的点(第一个点通常是发车点);右键撤销上一个点。</div>
+      <div class="hint" id="routeWarn" style="color:#b00020;"></div>
+      <div class="hint" id="routeStats"></div>
+      <canvas id="yawChart" width="396" height="150" style="border:1px solid var(--border); border-radius:8px; background:#fff; max-width:100%;"></canvas>
+      <h2 style="margin-top:10px;">转弯列表</h2>
+      <div class="hint">半径留空表示使用全局值;“实际”是被相邻段长度压缩后的生效半径。</div>
+      <table>
+        <thead>
+          <tr>
+            <th>节点</th>
+            <th>方向</th>
+            <th>角度</th>
+            <th>半径</th>
+            <th>实际</th>
+          </tr>
+        </thead>
+        <tbody id="turnsTable"></tbody>
+      </table>
+      <div class="row" style="margin-top:10px;">
+        <button id="exportNavBtn">下载 nav_path.h</button>
+      </div>
+      <div class="hint" id="exportInfo"></div>
+      <div class="hint">
+        导出包含所有非空路线,角度单位 0.01°,相对发车朝向,右转为正,采样间隔即上方设置值。用 <b>启动地图编辑器.bat</b> 打开本页时,导出会直接写进车上工程的 code/nav_path.h,不用手动替换。
+      </div>
+      <h2 style="margin-top:12px;">路线耗时估算参数</h2>
+      <div class="row">
+        <label>直道速度 m/s <input id="spdMax" type="number" value="3.8" step="0.1" min="0.5" style="width:64px"></label>
+        <label>最紧弯速度 m/s <input id="spdCorner" type="number" value="3.0" step="0.1" min="0.3" style="width:64px"></label>
+        <label>刹停距离 m <input id="spdBrakeDist" type="number" value="0.5" step="0.1" min="0.2" style="width:64px"></label>
+      </div>
+      <div class="hint">填写直道速度、最紧弯稳定速度和刹停距离，用于上方“预计耗时”计算；这些估算参数不写入 nav_path.h。</div>
+      <div class="hint" id="spdDerived"></div>
+    </div>
+
+    <div class="section" id="tab-json" style="display:none;">
+      <h2>导入 / 导出 JSON</h2>
+      <div class="row">
+        <button id="exportBtn">导出到文本框</button>
+        <button id="importBtn">从文本框导入</button>
+        <button id="downloadBtn">下载 JSON</button>
+      </div>
+      <textarea id="jsonText" spellcheck="false"></textarea>
+      <div class="hint">
+        导出的格式可直接给后续最短路径程序用。点的 type：node=普通节点，required=必经点，start=发车点。
+      </div>
+    </div>
+
+    <div class="section" id="tab-help" style="display:none;">
+      <h2>操作说明</h2>
+      <div class="hint">
+        <p><b>添加点：</b>点“添加点”模式，然后在网格上单击。默认会按网格吸附。</p>
+        <p><b>连接线：</b>点“连接线”模式，依次点击两个点。再次点击已连接的两点不会重复添加。</p>
+        <p><b>拖动点：</b>点“选择/拖动”模式，拖动黑点即可改变坐标。</p>
+        <p><b>精确改坐标：</b>在右侧“点列表”直接修改 x、y。</p>
+        <p><b>必经点：</b>把类型改成 required，会显示为黑色方块。发车点改成 start，会显示为蓝色。</p>
+        <p><b>删除：</b>删除模式下，点击点会删除该点和相关连线；点击线会删除线。</p>
+        <p><b>坐标单位：</b>默认就是 mm。比如 550 就填 550。</p>
+        <p><b>规划路径：</b>切到“规划路径”模式，按行进顺序点击点构成路线（右键撤销上一个点）。在“路径”标签页设置转弯半径、查看航向曲线并导出 nav_path.h。路线会随 JSON 一起保存。</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const canvas = document.getElementById("mapCanvas");
+const ctx = canvas.getContext("2d");
+const wrap = document.getElementById("canvasWrap");
+const pointEditor = document.getElementById("pointEditor");
+const pointEditorName = document.getElementById("pointEditorName");
+const pointEditorX = document.getElementById("pointEditorX");
+const pointEditorY = document.getElementById("pointEditorY");
+
+const state = {
+  mode: "select",
+  mapWidth: 3600,
+  mapHeight: 2200,
+  gridStep: 50,
+  scale: 0.36,
+  margin: 80,
+  snap: true,
+  showLengths: true,
+  points: [],
+  edges: [],
+  routes: [
+    {name: "路线1", nodes: [], radii: []},
+    {name: "路线2", nodes: [], radii: []},
+    {name: "路线3", nodes: [], radii: []}
+  ],
+  activeRouteIdx: 0,
+  /* ease 固定 0(纯圆弧,缓和段已按用户要求去掉,2026-07-10),字段保留只为兼容内部调用 */
+  routeSettings: {radius: 200, step: 5, invert: false, startDir: null, ease: 0, skipCollinear: true, camZoneMinMm: 500},
+  selectedPointId: null,
+  connectFirstId: null,
+  draggingId: null,
+  dragSnapshot: null,
+  dragMoved: false,
+  dragOffset: {x: 0, y: 0},
+  mouse: {x: 0, y: 0, mapX: 0, mapY: 0},
+  history: []
+};
+
+function cloneData() {
+  return JSON.parse(JSON.stringify({
+    points: state.points,
+    edges: state.edges,
+    routes: state.routes
+  }));
+}
+
+function pushHistory(snapshot = null) {
+  const entry = snapshot ? JSON.parse(JSON.stringify(snapshot)) : cloneData();
+  state.history.push(entry);
+  if (state.history.length > 80) state.history.shift();
+}
+
+function undo() {
+  const last = state.history.pop();
+  if (!last) return;
+  state.points = last.points;
+  state.edges = last.edges;
+  if (last.routes) state.routes = last.routes;
+  state.selectedPointId = null;
+  state.connectFirstId = null;
+  state.draggingId = null;
+  state.dragSnapshot = null;
+  state.dragMoved = false;
+  renderAll();
+}
+
+function isEditingElement(el) {
+  if (!el) return false;
+  const tag = el.tagName;
+  return el.isContentEditable || tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT";
+}
+
+function updatePointEditor() {
+  const p = getPoint(state.selectedPointId);
+  if (!p) {
+    pointEditor.hidden = true;
+    return;
+  }
+
+  const s = mapToScreen(p.x, p.y);
+  pointEditor.hidden = false;
+  pointEditor.style.left = `${s.x + 22}px`;
+  pointEditor.style.top = `${Math.max(8, s.y - 18)}px`;
+  pointEditorName.textContent = p.name;
+
+  if (document.activeElement !== pointEditorX) pointEditorX.value = p.x;
+  if (document.activeElement !== pointEditorY) pointEditorY.value = p.y;
+}
+
+function commitPointEditor() {
+  const p = getPoint(state.selectedPointId);
+  if (!p) return;
+
+  const x = Number(pointEditorX.value);
+  const y = Number(pointEditorY.value);
+  if (!Number.isFinite(x) || !Number.isFinite(y)) {
+    updatePointEditor();
+    return;
+  }
+
+  const nextX = Math.max(0, Math.min(state.mapWidth, Math.round(x)));
+  const nextY = Math.max(0, Math.min(state.mapHeight, Math.round(y)));
+  if (p.x === nextX && p.y === nextY) {
+    updatePointEditor();
+    return;
+  }
+
+  pushHistory();
+  p.x = nextX;
+  p.y = nextY;
+  renderAll();
+}
+
+function selectedPointDimension() {
+  const p = getPoint(state.selectedPointId);
+  if (!p) return null;
+
+  let best = null;
+  for (const e of state.edges) {
+    if (e.a === p.id || e.b === p.id) continue;
+    const a = getPoint(e.a);
+    const b = getPoint(e.b);
+    if (!a || !b) continue;
+
+    let mark = null;
+    if (a.y === b.y) {
+      const minX = Math.min(a.x, b.x);
+      const maxX = Math.max(a.x, b.x);
+      if (p.x >= minX && p.x <= maxX && p.y !== a.y) {
+        mark = {x: p.x, y: a.y, distance: Math.abs(p.y - a.y), axis: "vertical"};
+      }
+    } else if (a.x === b.x) {
+      const minY = Math.min(a.y, b.y);
+      const maxY = Math.max(a.y, b.y);
+      if (p.y >= minY && p.y <= maxY && p.x !== a.x) {
+        mark = {x: a.x, y: p.y, distance: Math.abs(p.x - a.x), axis: "horizontal"};
+      }
+    }
+
+    if (mark && (!best || mark.distance < best.distance)) best = mark;
+  }
+
+  return best;
+}
+
+function setMode(mode) {
+  state.mode = mode;
+  state.connectFirstId = null;
+  for (const id of ["modeSelect","modeAdd","modeConnect","modeDelete","modeRoute"]) {
+    document.getElementById(id).classList.remove("active");
+  }
+  document.getElementById({
+    select: "modeSelect",
+    add: "modeAdd",
+    connect: "modeConnect",
+    delete: "modeDelete",
+    route: "modeRoute"
+  }[mode]).classList.add("active");
+  draw();
+}
+
+function nextPointName() {
+  let i = state.points.length + 1;
+  while (state.points.some(p => p.name === "P" + i)) i++;
+  return "P" + i;
+}
+
+function snapValue(v) {
+  if (!state.snap) return Math.round(v);
+  const step = state.gridStep;
+  return Math.round(v / step) * step;
+}
+
+function screenToMap(sx, sy) {
+  const rect = canvas.getBoundingClientRect();
+  const x = (sx - rect.left - state.margin) / state.scale;
+  const y = (sy - rect.top - state.margin) / state.scale;
+  return {
+    x: snapValue(Math.max(0, Math.min(state.mapWidth, x))),
+    y: snapValue(Math.max(0, Math.min(state.mapHeight, y)))
+  };
+}
+
+function mapToScreen(x, y) {
+  return {
+    x: state.margin + x * state.scale,
+    y: state.margin + y * state.scale
+  };
+}
+
+function resizeCanvas() {
+  canvas.width = Math.ceil(state.mapWidth * state.scale + state.margin * 2);
+  canvas.height = Math.ceil(state.mapHeight * state.scale + state.margin * 2);
+}
+
+function getPoint(id) {
+  return state.points.find(p => p.id === id);
+}
+
+function edgeKey(a, b) {
+  return [a, b].sort().join("__");
+}
+
+function addPoint(x, y, type = "node", name = null) {
+  pushHistory();
+  const id = "p_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2, 7);
+  state.points.push({
+    id,
+    name: name || nextPointName(),
+    x: Math.round(x),
+    y: Math.round(y),
+    type
+  });
+  state.selectedPointId = id;
+  renderAll();
+  return id;
+}
+
+function addEdge(a, b) {
+  if (!a || !b || a === b) return;
+  const key = edgeKey(a, b);
+  if (state.edges.some(e => edgeKey(e.a, e.b) === key)) return;
+  pushHistory();
+  state.edges.push({a, b});
+  renderAll();
+}
+
+function removePoint(id) {
+  pushHistory();
+  state.points = state.points.filter(p => p.id !== id);
+  state.edges = state.edges.filter(e => e.a !== id && e.b !== id);
+  for (const r of state.routes) {
+    for (let i = r.nodes.length - 1; i >= 0; i--) {
+      if (r.nodes[i] === id) {
+        r.nodes.splice(i, 1);
+        r.radii.splice(i, 1);
+      }
+    }
+  }
+  if (state.selectedPointId === id) state.selectedPointId = null;
+  renderAll();
+}
+
+function removeEdge(index) {
+  pushHistory();
+  state.edges.splice(index, 1);
+  renderAll();
+}
+
+function finishDrag() {
+  if (!state.draggingId) return;
+  if (state.dragMoved && state.dragSnapshot) {
+    pushHistory(state.dragSnapshot);
+  }
+  state.draggingId = null;
+  state.dragSnapshot = null;
+  state.dragMoved = false;
+  renderAll();
+}
+
+function hitPoint(mx, my) {
+  const r = 12 / state.scale;
+  for (let i = state.points.length - 1; i >= 0; i--) {
+    const p = state.points[i];
+    if (Math.hypot(p.x - mx, p.y - my) <= r) return p;
+  }
+  return null;
+}
+
+function distPointToSegment(px, py, ax, ay, bx, by) {
+  const dx = bx - ax;
+  const dy = by - ay;
+  if (dx === 0 && dy === 0) return Math.hypot(px - ax, py - ay);
+  let t = ((px - ax) * dx + (py - ay) * dy) / (dx * dx + dy * dy);
+  t = Math.max(0, Math.min(1, t));
+  const x = ax + t * dx;
+  const y = ay + t * dy;
+  return Math.hypot(px - x, py - y);
+}
+
+function hitEdge(mx, my) {
+  const threshold = 10 / state.scale;
+  for (let i = state.edges.length - 1; i >= 0; i--) {
+    const e = state.edges[i];
+    const a = getPoint(e.a);
+    const b = getPoint(e.b);
+    if (!a || !b) continue;
+    if (distPointToSegment(mx, my, a.x, a.y, b.x, b.y) <= threshold) return i;
+  }
+  return -1;
+}
+
+function edgeLength(a, b) {
+  return Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
+}
+
+function isOrthogonal(a, b) {
+  return a.x === b.x || a.y === b.y;
+}
+
+// ==================== 路径规划 ====================
+
+function activeRoute() {
+  return state.routes[state.activeRouteIdx];
+}
+
+let routeGeomCache = null;
+
+function invalidateRouteGeom() {
+  routeGeomCache = null;
+}
+
+// 数值构造单个弯道曲线:曲率梯形剖面(缓和段线性渐入 → 圆弧 → 缓和段线性渐出)。
+// 缓和曲线(clothoid)让曲率连续变化,消掉入弯瞬间的横向加速度阶跃(打滑源头);
+// 相邻反向弯(S 弯)的渐出接渐入,曲率经过零点连成 S 形剖面,同样平顺。
+// 输入:总转角 theta(rad,>0)、半径 R(mm)、缓和段长 Ls(mm,0=纯圆弧)。
+// 输出局部系(起点在原点,初始航向 0,右转)下的采样点与切距;
+// 整条曲线几何相似,半径压缩时按比例缩放即可。
+function buildCornerCurve(theta, R, Ls) {
+  const k = 1.0 / R;
+  let ls = Ls;
+  let arcAngle = theta - k * ls; // 两段缓和各贡献 k*ls/2 的转角
+  if (arcAngle < 0) {
+    ls = theta / k; // 转角太小放不下完整缓和段:纯三角剖面
+    arcAngle = 0;
+  }
+  const La = arcAngle / k;
+  const total = 2 * ls + La;
+  const n = Math.max(4, Math.ceil(total / 2)); // ~2mm 积分步
+  const ds = total / n;
+  const pts = [{x: 0, y: 0, h: 0}];
+  let x = 0, y = 0, h = 0;
+  for (let i = 0; i < n; i++) {
+    const sm = (i + 0.5) * ds;
+    let kk;
+    if (ls > 1e-9 && sm < ls) kk = k * sm / ls;
+    else if (sm < ls + La || ls <= 1e-9) kk = k;
+    else kk = k * (total - sm) / ls;
+    const hm = h + kk * ds * 0.5; // 中点法积分
+    x += ds * Math.cos(hm);
+    y += ds * Math.sin(hm);
+    h += kk * ds;
+    pts.push({x, y, h});
+  }
+  // 切距:入切线(x 轴)与出切线的交点是弯道顶点
+  const sinE = Math.sin(h);
+  const tOut = y / sinE;
+  const tIn = x - y * Math.cos(h) / sinE;
+  return {pts, ds, len: total, tIn, tOut};
+}
+
+
+// 把路线节点序列变成 直线段+弯道曲线 的几何序列。
+// 返回 {segs, turns, totalLen, startHeading, warnings}
+// seg: {type:'line', ax,ay,bx,by,len} 或 {type:'curve', pts:[{x,y,heading}], ds, len}
+// 坐标系:x 右,y 下。屏幕顺时针 = 实车右转 = 航向角增大。
+function buildRouteGeometry(route) {
+  const raw = route.nodes.map((id, i) => {
+    const p = getPoint(id);
+    return p ? {x: p.x, y: p.y, name: p.name, origIdx: i} : null;
+  }).filter(Boolean);
+
+  // 去掉连续重合点
+  let V = [];
+  for (const p of raw) {
+    const last = V[V.length - 1];
+    if (last && Math.hypot(p.x - last.x, p.y - last.y) < 1e-6) continue;
+    V.push(p);
+  }
+  if (V.length < 2) return null;
+
+  // 共线优化(可开关):忽略共线的中间点(必经点、直行穿过的路口)——
+  // 它们不产生圆弧,保留只会把长直线截成小段,人为压缩相邻弯道的可用半径。
+  // 例:X1 在 A-B 直线上,滤掉后 B 处的圆弧可以用完整的 A-B 段长。
+  if (state.routeSettings.skipCollinear && V.length > 2) {
+    const W = [V[0]];
+    for (let i = 1; i < V.length - 1; i++) {
+      const P = W[W.length - 1];
+      const B = V[i];
+      const C = V[i + 1];
+      const l1 = Math.hypot(B.x - P.x, B.y - P.y);
+      const l2 = Math.hypot(C.x - B.x, C.y - B.y);
+      if (l1 < 1e-6 || l2 < 1e-6) { W.push(B); continue; }
+      const dot = ((B.x - P.x) * (C.x - B.x) + (B.y - P.y) * (C.y - B.y)) / (l1 * l2);
+      if (dot < Math.cos(0.01)) W.push(B); // 转角 >0.57° 才算真弯
+    }
+    W.push(V[V.length - 1]);
+    V = W;
+  }
+
+  const globalR = state.routeSettings.radius;
+  const segs = [];
+  const turns = [];
+  const warnings = [];
+  const n = V.length;
+
+  // 第一遍:每个内部顶点的转角信息与期望切距
+  const corner = new Array(n).fill(null);
+  for (let i = 1; i < n - 1; i++) {
+    const A = V[i - 1], B = V[i], C = V[i + 1];
+    const l1 = Math.hypot(B.x - A.x, B.y - A.y);
+    const l2 = Math.hypot(C.x - B.x, C.y - B.y);
+    const u1 = {x: (B.x - A.x) / l1, y: (B.y - A.y) / l1};
+    const u2 = {x: (C.x - B.x) / l2, y: (C.y - B.y) / l2};
+    const cross = u1.x * u2.y - u1.y * u2.x; // >0 右转(屏幕顺时针)
+    const dot = Math.max(-1, Math.min(1, u1.x * u2.x + u1.y * u2.y));
+    const theta = Math.acos(dot);
+
+    if (theta < 0.01) continue; // 基本直行,不插圆弧
+    if (theta > Math.PI - 0.05) {
+      warnings.push(`节点 ${B.name} 处接近 180° 掉头,无法生成圆弧,已按直角连接。`);
+      corner[i] = {uturn: true, t: 0};
+      continue;
+    }
+
+    const reqR = (route.radii[B.origIdx] != null && route.radii[B.origIdx] > 0) ? route.radii[B.origIdx] : globalR;
+    const curve = buildCornerCurve(theta, reqR, Math.max(0, state.routeSettings.ease || 0));
+    corner[i] = {
+      u1, u2, theta,
+      s: cross > 0 ? 1 : -1, // 1=右转 -1=左转
+      reqR,
+      curve,
+      t: Math.max(curve.tIn, curve.tOut), // 每侧占用的切线长度
+      f: 1,                               // 压缩比例(几何相似缩放)
+      clamped: false
+    };
+  }
+
+  // 第二遍:同一段上相邻两弯的切距之和不能超过段长,按比例压缩。
+  // 只看转角和相邻段的原始长度,与行进方向和前后弯的处理顺序无关,
+  // 同一个弯道不管从哪个方向经过,收缩出的半径都一致。
+  const segFactor = new Array(n - 1).fill(1);
+  for (let j = 0; j + 1 < n; j++) {
+    const L = Math.hypot(V[j + 1].x - V[j].x, V[j + 1].y - V[j].y);
+    const need = (corner[j] ? corner[j].t : 0) + (corner[j + 1] ? corner[j + 1].t : 0);
+    if (need > L * 0.98) segFactor[j] = (L * 0.98) / need;
+  }
+  for (let i = 1; i < n - 1; i++) {
+    const c = corner[i];
+    if (!c || c.uturn) continue;
+    const f = Math.min(1, segFactor[i - 1], segFactor[i]);
+    if (f < 1) {
+      c.t *= f;
+      c.f = f;
+      c.clamped = true;
+    }
+  }
+
+  // 第三遍:生成 直线+圆弧
+  let cursor = {x: V[0].x, y: V[0].y};
+  const pushLine = (bx, by) => {
+    const len = Math.hypot(bx - cursor.x, by - cursor.y);
+    if (len > 1e-6) {
+      segs.push({type: "line", ax: cursor.x, ay: cursor.y, bx, by, len});
+    }
+    cursor = {x: bx, y: by};
+  };
+
+  for (let i = 1; i < n - 1; i++) {
+    const B = V[i];
+    const c = corner[i];
+    if (!c) continue; // 直行点
+    if (c.uturn) {
+      pushLine(B.x, B.y);
+      continue;
+    }
+
+    // 弯道曲线按压缩比例 f 几何相似缩放,再旋转/镜像放置到顶点两侧切线上
+    const f = c.f;
+    const effR = c.reqR * f;
+    const phi1 = Math.atan2(c.u1.y, c.u1.x);
+    const cph = Math.cos(phi1);
+    const sph = Math.sin(phi1);
+    const startX = B.x - c.u1.x * (c.curve.tIn * f);
+    const startY = B.y - c.u1.y * (c.curve.tIn * f);
+    const pts = c.curve.pts.map(p => {
+      const py = c.s * p.y; // 左转时镜像
+      return {
+        x: startX + f * (p.x * cph - py * sph),
+        y: startY + f * (p.x * sph + py * cph),
+        heading: phi1 + c.s * p.h
+      };
+    });
+
+    pushLine(startX, startY);
+    segs.push({type: "curve", pts, ds: c.curve.ds * f, len: c.curve.len * f});
+    cursor = {x: pts[pts.length - 1].x, y: pts[pts.length - 1].y};
+
+    turns.push({
+      vertexIndex: B.origIdx,
+      name: B.name,
+      dir: c.s > 0 ? "右转" : "左转",
+      angleDeg: c.theta * 180 / Math.PI,
+      requestedR: c.reqR,
+      actualR: effR,
+      clamped: c.clamped
+    });
+    if (c.clamped) {
+      warnings.push(`节点 ${B.name} 处半径 ${c.reqR}mm 放不下,已压缩到 ${Math.round(effR)}mm。`);
+    }
+  }
+  pushLine(V[n - 1].x, V[n - 1].y);
+
+  if (!segs.length) return null;
+
+  let totalLen = 0;
+  for (const s of segs) totalLen += s.len;
+
+  const first = segs[0];
+  const startHeading = first.type === "line"
+    ? Math.atan2(first.by - first.ay, first.bx - first.ax)
+    : first.pts[0].heading;
+
+  return {segs, turns, totalLen, startHeading, warnings: [...new Set(warnings)]};
+}
+
+// 沿几何在里程 s 处取位置与切线航向(弧度)
+function samplePose(geom, dist) {
+  let acc = 0;
+  for (const seg of geom.segs) {
+    if (dist > acc + seg.len) {
+      acc += seg.len;
+      continue;
+    }
+    const d = dist - acc;
+    if (seg.type === "line") {
+      const t = seg.len > 0 ? d / seg.len : 0;
+      return {
+        x: seg.ax + (seg.bx - seg.ax) * t,
+        y: seg.ay + (seg.by - seg.ay) * t,
+        heading: Math.atan2(seg.by - seg.ay, seg.bx - seg.ax)
+      };
+    }
+    // curve:等距点表线性插值
+    {
+      let idx = d / seg.ds;
+      let i0 = Math.floor(idx);
+      if (i0 > seg.pts.length - 2) i0 = seg.pts.length - 2;
+      if (i0 < 0) i0 = 0;
+      const fr = idx - i0;
+      const a = seg.pts[i0];
+      const b = seg.pts[i0 + 1];
+      return {
+        x: a.x + (b.x - a.x) * fr,
+        y: a.y + (b.y - a.y) * fr,
+        heading: a.heading + (b.heading - a.heading) * fr
+      };
+    }
+  }
+  const last = geom.segs[geom.segs.length - 1];
+  if (last.type === "line") {
+    return {x: last.bx, y: last.by, heading: Math.atan2(last.by - last.ay, last.bx - last.ax)};
+  }
+  const lp = last.pts[last.pts.length - 1];
+  return {x: lp.x, y: lp.y, heading: lp.heading};
+}
+
+function wrapDeg(v) {
+  while (v > 180) v -= 360;
+  while (v <= -180) v += 360;
+  return v;
+}
+
+// 按采样间隔生成 {relDeg[](±180 卷绕), unwrappedDeg[](连续), poses[]}
+function sampleRouteYaw(geom) {
+  const step = Math.max(1, state.routeSettings.step);
+  const sign = state.routeSettings.invert ? -1 : 1;
+  const n = Math.floor(geom.totalLen / step);
+  const relDeg = [];
+  const unwrappedDeg = [];
+  const poses = [];
+  let prevHeading = geom.startHeading;
+  let unwrapped = 0;
+  for (let k = 1; k <= n; k++) {
+    const pose = samplePose(geom, k * step);
+    let dh = pose.heading - prevHeading;
+    while (dh > Math.PI) dh -= 2 * Math.PI;
+    while (dh < -Math.PI) dh += 2 * Math.PI;
+    unwrapped += dh * 180 / Math.PI;
+    prevHeading = pose.heading;
+    unwrappedDeg.push(sign * unwrapped);
+    relDeg.push(wrapDeg(sign * unwrapped));
+    poses.push(pose);
+  }
+  return {relDeg, unwrappedDeg, poses, step};
+}
+
+// ==================== 编辑器耗时估算 ====================
+// 模型:κ=|Δyaw|/采样间隔 → v²=横向加速度上限/κ,按制动能力倒推,
+// 出弯按加速斜率回升,与基础速度取交集,发车从 0 起步。
+// 数值由速度面板的三个输入实时换算(updateSpeedCfg)，仅用于路线时间预估。
+const TIME_EST = {
+  vMax: 3800,    // 基础速度(直道) mm/s
+  latAcc: 40000, // 横向加速度上限 mm/s²
+  brake: 15000,  // 制动能力 mm/s²
+  fwdAcc: 12000, // 出弯加速度 mm/s²
+  vMin: 1000     // 估算速度下限 mm/s
+};
+
+function estimateLapTime(geom) {
+  const s = sampleRouteYaw(geom);
+  const n = s.unwrappedDeg.length;
+  if (n < 2) return null;
+  const step = s.step;
+  const v = new Float64Array(n);
+  let prevYaw = 0;
+  for (let i = 0; i < n; i++) {
+    const d = Math.abs(s.unwrappedDeg[i] - prevYaw) * Math.PI / 180;
+    prevYaw = s.unwrappedDeg[i];
+    const kappa = d / step;
+    let vi = kappa > 1e-6 ? Math.sqrt(TIME_EST.latAcc / kappa) : TIME_EST.vMax;
+    if (vi < TIME_EST.vMin) vi = TIME_EST.vMin;
+    if (vi > TIME_EST.vMax) vi = TIME_EST.vMax;
+    v[i] = vi;
+  }
+  v[0] = 0; // 发车静止起步
+  for (let i = n - 2; i >= 0; i--) { // 制动倒推
+    const cap = Math.sqrt(v[i + 1] * v[i + 1] + 2 * TIME_EST.brake * step);
+    if (v[i] > cap) v[i] = cap;
+  }
+  for (let i = 1; i < n; i++) { // 加速斜率回升
+    const cap = Math.sqrt(v[i - 1] * v[i - 1] + 2 * TIME_EST.fwdAcc * step);
+    if (v[i] > cap) v[i] = cap;
+  }
+  let t = 0;
+  for (let i = 1; i < n; i++) {
+    t += step / Math.max(1, (v[i] + v[i - 1]) / 2);
+  }
+  return t;
+}
+
+function getRouteGeom() {
+  if (routeGeomCache && routeGeomCache.idx === state.activeRouteIdx) return routeGeomCache.geom;
+  const geom = buildRouteGeometry(activeRoute());
+  routeGeomCache = {idx: state.activeRouteIdx, geom};
+  return geom;
+}
+
+// 正向/反向的物理定义(固定死,与点击顺序无关):
+// 车摆在该方向的起点、朝路线出发方向,赛道整体(路线节点均值)在车
+// 右手边 = 正向,在左手边 = 反向。裁判摆车看一眼赛道在哪边即可。
+function routeCourseOnRight(route) {
+  const geom = buildRouteGeometry(route);
+  if (!geom) return true;
+  const p0 = samplePose(geom, 0);
+  const th = geom.startHeading;
+  const pts = route.nodes.map(id => getPoint(id)).filter(Boolean);
+  if (!pts.length) return true;
+  let cx = 0, cy = 0;
+  for (const p of pts) { cx += p.x; cy += p.y; }
+  cx /= pts.length;
+  cy /= pts.length;
+  // 发车系右侧方向 = 航向 +90°(屏幕坐标,右转为正)
+  return ((cx - p0.x) * -Math.sin(th) + (cy - p0.y) * Math.cos(th)) > 0;
+}
+
+// 当前路线的最小有效弯半径(mm):曲率峰值的倒数,弯道被压缩后的真实值
+function routeMinRadius() {
+  const geom = getRouteGeom();
+  if (!geom) return state.routeSettings.radius;
+  const s = sampleRouteYaw(geom);
+  let maxD = 0;
+  for (let i = 1; i < s.unwrappedDeg.length; i++) {
+    maxD = Math.max(maxD, Math.abs(s.unwrappedDeg[i] - s.unwrappedDeg[i - 1]));
+  }
+  const kappa = maxD * Math.PI / 180 / s.step;
+  return kappa > 1e-9 ? 1 / kappa : state.routeSettings.radius;
+}
+
+// 三个实测速度输入 → 编辑器耗时估算参数。
+// 换算:横向加速度=弯速²/最小弯半径;制动=直道²/(2×刹停距离)——
+// 注意是"刹停"而不是"刹到弯速":弯速接近直道速度时后者分子趋零,
+// 会把制动/出弯斜率算得极小,发车加速被一起压死(实车表现:起步爬行)。
+// 出弯回升取制动的 0.8 倍(电机驱动一般弱于反拖);视界=刹停距离×1.2 余量。
+function speedCfgValues(rMin) {
+  let vMaxMs = Number(document.getElementById("spdMax").value) || 3.8;
+  let vCorMs = Number(document.getElementById("spdCorner").value) || 3.0;
+  const dBrakeM = Math.max(0.2, Number(document.getElementById("spdBrakeDist").value) || 0.5);
+  if (vCorMs > vMaxMs) vCorMs = vMaxMs;
+
+  const vMax = vMaxMs * 1000;   // mm/s
+  const vCor = vCorMs * 1000;
+  const dBrake = dBrakeM * 1000;
+  const latAcc = vCor * vCor / rMin;
+  const brake = Math.max(2000, (vMax * vMax) / (2 * dBrake));
+  const fwdAcc = brake * 0.8;
+  const horizon = Math.ceil(dBrake * 1.2 / 100) * 100;
+  return {vMaxMs, vCorMs, dBrakeM, vMax, vCor, rMin, latAcc, brake, fwdAcc, horizon};
+}
+
+// 同步耗时模型 + 显示当前换算结果
+function updateSpeedCfg() {
+  const sc = speedCfgValues(routeMinRadius());
+  TIME_EST.vMax = sc.vMax;
+  TIME_EST.latAcc = sc.latAcc;
+  TIME_EST.brake = sc.brake;
+  TIME_EST.fwdAcc = sc.fwdAcc;
+
+  document.getElementById("spdDerived").textContent =
+    `当前路线最紧弯半径 ${Math.round(sc.rMin)}mm → 横向加速度 ${Math.round(sc.latAcc)}mm/s²(≈${(sc.latAcc / 9800).toFixed(1)}g);` +
+    `制动 ${Math.round(sc.brake)}mm/s²;半径 ${state.routeSettings.radius}mm 的标准弯限速 ${(Math.sqrt(sc.latAcc * state.routeSettings.radius) / 1000).toFixed(2)}m/s`;
+}
+
+function routePushNode(pointId) {
+  const r = activeRoute();
+  if (r.nodes.length && r.nodes[r.nodes.length - 1] === pointId) return;
+  pushHistory();
+  r.nodes.push(pointId);
+  r.radii.push(null);
+  renderAll();
+}
+
+function routePopNode() {
+  const r = activeRoute();
+  if (!r.nodes.length) return;
+  pushHistory();
+  r.nodes.pop();
+  r.radii.pop();
+  renderAll();
+}
+
+function routeReverse() {
+  const r = activeRoute();
+  if (r.nodes.length < 2) return;
+  pushHistory();
+  r.nodes.reverse();
+  r.radii.reverse();
+  renderAll();
+}
+
+function routeClear() {
+  const r = activeRoute();
+  if (!r.nodes.length) return;
+  pushHistory();
+  r.nodes = [];
+  r.radii = [];
+  renderAll();
+}
+
+// 摄像头区显示缓存:切区结果随(路线,门槛,采样)变化,几何重建后自动失效
+let zoneViewCache = null;
+function getRouteCamZonesView() {
+  const geom = getRouteGeom();
+  if (!geom) return null;
+  const key = `${state.activeRouteIdx}|${state.routeSettings.camZoneMinMm}|${state.routeSettings.step}`;
+  if (zoneViewCache && zoneViewCache.key === key && zoneViewCache.geom === geom) return zoneViewCache;
+  const samples = sampleRouteYaw(geom);
+  const vals = samples.relDeg.map(v => Math.round(v * 100));
+  const zones = computeCamZones(vals, samples.step, state.routeSettings.camZoneMinMm);
+  zoneViewCache = {key, geom, zones, poses: samples.poses};
+  return zoneViewCache;
+}
+
+function drawRoute() {
+  const r = activeRoute();
+  if (!r.nodes.length) return;
+
+  const geom = getRouteGeom();
+  ctx.save();
+
+  if (geom) {
+    // 轨迹
+    ctx.strokeStyle = "rgba(16,150,72,0.85)";
+    ctx.lineWidth = 5;
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    let started = false;
+    for (const seg of geom.segs) {
+      if (seg.type === "line") {
+        const a = mapToScreen(seg.ax, seg.ay);
+        const b = mapToScreen(seg.bx, seg.by);
+        if (!started) { ctx.moveTo(a.x, a.y); started = true; }
+        ctx.lineTo(b.x, b.y);
+      } else {
+        // curve:每 3 个点画折线,视觉上已是光滑曲线
+        for (let i = 0; i < seg.pts.length; i += 3) {
+          const p = mapToScreen(seg.pts[i].x, seg.pts[i].y);
+          if (!started) { ctx.moveTo(p.x, p.y); started = true; }
+          else ctx.lineTo(p.x, p.y);
+        }
+        const pe = mapToScreen(seg.pts[seg.pts.length - 1].x, seg.pts[seg.pts.length - 1].y);
+        ctx.lineTo(pe.x, pe.y);
+      }
+    }
+    ctx.stroke();
+
+    // 摄像头区盖色:蓝=摄像头横向纠偏,绿=只用惯导
+    {
+      const zv = getRouteCamZonesView();
+      if (zv && zv.zones.length) {
+        ctx.strokeStyle = "rgba(25,105,235,0.95)";
+        for (const z of zv.zones) {
+          ctx.beginPath();
+          let st = false;
+          for (let i = z.lo; i <= z.hi; i += 2) {
+            const p = mapToScreen(zv.poses[i].x, zv.poses[i].y);
+            if (!st) { ctx.moveTo(p.x, p.y); st = true; }
+            else ctx.lineTo(p.x, p.y);
+          }
+          const pe = mapToScreen(zv.poses[z.hi].x, zv.poses[z.hi].y);
+          ctx.lineTo(pe.x, pe.y);
+          ctx.stroke();
+        }
+      }
+    }
+
+    // 方向箭头,每 400mm 一个
+    ctx.fillStyle = "rgba(16,150,72,0.95)";
+    for (let d = 200; d < geom.totalLen; d += 400) {
+      const pose = samplePose(geom, d);
+      const s = mapToScreen(pose.x, pose.y);
+      ctx.save();
+      ctx.translate(s.x, s.y);
+      ctx.rotate(pose.heading);
+      ctx.beginPath();
+      ctx.moveTo(7, 0);
+      ctx.lineTo(-4, 4.5);
+      ctx.lineTo(-4, -4.5);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    }
+  }
+
+  // 路线节点顺序徽标
+  r.nodes.forEach((id, i) => {
+    const p = getPoint(id);
+    if (!p) return;
+    const s = mapToScreen(p.x, p.y);
+    ctx.fillStyle = "#109648";
+    ctx.beginPath();
+    ctx.arc(s.x + 13, s.y + 13, 9, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#fff";
+    ctx.font = "bold 10px sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(String(i + 1), s.x + 13, s.y + 13);
+  });
+
+  ctx.restore();
+}
+
+// ==================== 播放流向动画 ====================
+
+const playback = {active: false, dist: 0, raf: 0, lastTs: 0};
+
+function togglePlayback() {
+  if (playback.active) {
+    stopPlayback();
+    return;
+  }
+  const geom = getRouteGeom();
+  if (!geom) {
+    alert("当前路线为空,先规划一条路线。");
+    return;
+  }
+  playback.active = true;
+  playback.dist = 0;
+  playback.lastTs = 0;
+  document.getElementById("playBtn").textContent = "⏹ 停止";
+  playback.raf = requestAnimationFrame(stepPlayback);
+}
+
+function stopPlayback() {
+  playback.active = false;
+  cancelAnimationFrame(playback.raf);
+  document.getElementById("playBtn").textContent = "▶ 播放流向";
+  draw();
+}
+
+function stepPlayback(ts) {
+  if (!playback.active) return;
+  const geom = getRouteGeom();
+  if (!geom) { stopPlayback(); return; }
+  if (playback.lastTs) {
+    const speed = Number(document.getElementById("playSpeed").value) || 2; // m/s
+    playback.dist += speed * (ts - playback.lastTs); // mm (m/s * ms)
+  }
+  playback.lastTs = ts;
+  if (playback.dist >= geom.totalLen) {
+    playback.dist = geom.totalLen;
+    draw();
+    stopPlayback();
+    return;
+  }
+  draw();
+  playback.raf = requestAnimationFrame(stepPlayback);
+}
+
+function drawPlayback() {
+  if (!playback.active) return;
+  const geom = getRouteGeom();
+  if (!geom) return;
+  const d = Math.min(playback.dist, geom.totalLen);
+
+  ctx.save();
+  // 已走过的轨迹高亮
+  ctx.strokeStyle = "#ff7a00";
+  ctx.lineWidth = 6;
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  let first = true;
+  for (let s = 0; s <= d; s += 25) {
+    const pose = samplePose(geom, s);
+    const sp = mapToScreen(pose.x, pose.y);
+    if (first) { ctx.moveTo(sp.x, sp.y); first = false; }
+    else ctx.lineTo(sp.x, sp.y);
+  }
+  ctx.stroke();
+
+  // 小车标记(圆点 + 朝向三角)
+  const pose = samplePose(geom, d);
+  const sp = mapToScreen(pose.x, pose.y);
+  ctx.translate(sp.x, sp.y);
+  ctx.rotate(pose.heading);
+  ctx.fillStyle = "#ff7a00";
+  ctx.strokeStyle = "#fff";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(14, 0);
+  ctx.lineTo(-8, 8);
+  ctx.lineTo(-8, -8);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+  ctx.rotate(-pose.heading);
+
+  // 里程进度
+  ctx.fillStyle = "#ff7a00";
+  ctx.font = "bold 13px sans-serif";
+  ctx.textAlign = "left";
+  ctx.textBaseline = "bottom";
+  ctx.fillText(`${(d / 1000).toFixed(1)} / ${(geom.totalLen / 1000).toFixed(1)} m`, 18, -12);
+  ctx.restore();
+}
+
+function drawYawChart(samples) {
+  const chart = document.getElementById("yawChart");
+  const c = chart.getContext("2d");
+  c.clearRect(0, 0, chart.width, chart.height);
+  c.fillStyle = "#fff";
+  c.fillRect(0, 0, chart.width, chart.height);
+
+  if (!samples || !samples.unwrappedDeg.length) {
+    c.fillStyle = "#999";
+    c.font = "12px sans-serif";
+    c.textAlign = "center";
+    c.fillText("暂无数据", chart.width / 2, chart.height / 2);
+    return;
+  }
+
+  const data = samples.unwrappedDeg;
+  const padL = 38, padR = 8, padT = 10, padB = 22;
+  const w = chart.width - padL - padR;
+  const h = chart.height - padT - padB;
+  let minV = Math.min(0, ...data);
+  let maxV = Math.max(0, ...data);
+  if (maxV - minV < 20) { maxV += 10; minV -= 10; }
+  const totalM = data.length * samples.step / 1000;
+
+  const xAt = i => padL + (i / (data.length - 1 || 1)) * w;
+  const yAt = v => padT + (1 - (v - minV) / (maxV - minV)) * h;
+
+  // 网格与刻度
+  c.strokeStyle = "#eee";
+  c.fillStyle = "#888";
+  c.font = "10px sans-serif";
+  c.textAlign = "right";
+  c.textBaseline = "middle";
+  const vStep = niceStep((maxV - minV) / 4);
+  for (let v = Math.ceil(minV / vStep) * vStep; v <= maxV; v += vStep) {
+    c.beginPath();
+    c.moveTo(padL, yAt(v));
+    c.lineTo(padL + w, yAt(v));
+    c.stroke();
+    c.fillText(String(Math.round(v)) + "°", padL - 4, yAt(v));
+  }
+  c.textAlign = "center";
+  c.textBaseline = "top";
+  const mStep = niceStep(totalM / 5);
+  for (let m = 0; m <= totalM; m += mStep) {
+    const x = padL + (m / totalM) * w;
+    c.fillText(m.toFixed(mStep < 1 ? 1 : 0) + "m", x, padT + h + 6);
+  }
+
+  // 零线
+  c.strokeStyle = "#bbb";
+  c.beginPath();
+  c.moveTo(padL, yAt(0));
+  c.lineTo(padL + w, yAt(0));
+  c.stroke();
+
+  // 曲线
+  c.strokeStyle = "#1f5cff";
+  c.lineWidth = 1.6;
+  c.beginPath();
+  data.forEach((v, i) => {
+    if (i === 0) c.moveTo(xAt(i), yAt(v));
+    else c.lineTo(xAt(i), yAt(v));
+  });
+  c.stroke();
+}
+
+function niceStep(raw) {
+  if (raw <= 0) return 1;
+  const pow = Math.pow(10, Math.floor(Math.log10(raw)));
+  const n = raw / pow;
+  if (n <= 1) return pow;
+  if (n <= 2) return 2 * pow;
+  if (n <= 5) return 5 * pow;
+  return 10 * pow;
+}
+
+function requiredCoverage(samples) {
+  const required = state.points.filter(p => p.type === "required");
+  if (!required.length || !samples || !samples.poses.length) return [];
+  const TOL = 100; // mm,按车宽估计的可覆盖半径
+  const missed = [];
+  for (const rp of required) {
+    let best = Infinity;
+    for (const pose of samples.poses) {
+      const d = Math.hypot(pose.x - rp.x, pose.y - rp.y);
+      if (d < best) best = d;
+      if (best <= TOL / 2) break;
+    }
+    if (best > TOL) missed.push(`${rp.name}(偏离 ${Math.round(best)}mm,可调小该路口半径)`);
+  }
+  return missed;
+}
+
+function renderRoutePanel() {
+  for (let i = 0; i < 3; i++) {
+    document.getElementById("routeSel" + i).classList.toggle("active", i === state.activeRouteIdx);
+  }
+
+  // 发车方向选项:发车点在规划图上的邻接点
+  {
+    const sel = document.getElementById("startDirSel");
+    const startPoint = state.points.find(p => p.type === "start");
+    let opts = '<option value="">自动(最短)</option>';
+    if (startPoint && state.edges.length) {
+      try {
+        const {adj, alias} = buildPlanGraph();
+        const sv = adj.has(startPoint.id) ? startPoint.id : alias.get(startPoint.id);
+        for (const nb of adj.get(sv) || []) {
+          const p = getPoint(nb.to);
+          if (p) opts += `<option value="${p.id}">朝 ${escapeHtml(p.name)}</option>`;
+        }
+      } catch (e) { /* 图不完整时忽略 */ }
+    }
+    sel.innerHTML = opts;
+    sel.value = state.routeSettings.startDir || "";
+    if (sel.value !== (state.routeSettings.startDir || "")) state.routeSettings.startDir = null; // 存的方向已失效
+  }
+
+  const r = activeRoute();
+  const seqEl = document.getElementById("routeSeq");
+  if (!r.nodes.length) {
+    seqEl.textContent = "路线为空。进入“规划路径”模式后,按行进顺序依次点击地图上的点(第一个点通常是发车点);右键撤销上一个点。";
+  } else {
+    const names = r.nodes.map(id => {
+      const p = getPoint(id);
+      return p ? p.name : "?";
+    });
+    seqEl.textContent = `${r.name}: ` + names.join(" → ");
+  }
+
+  const geom = r.nodes.length >= 2 ? getRouteGeom() : null;
+  const samples = geom ? sampleRouteYaw(geom) : null;
+
+  updateSpeedCfg(); // 先同步速度参数,下面的预计耗时才用最新值
+
+  const warnEl = document.getElementById("routeWarn");
+  const statsEl = document.getElementById("routeStats");
+  const warns = geom ? [...geom.warnings] : [];
+  if (samples) {
+    const missed = requiredCoverage(samples);
+    if (missed.length) warns.push(`未覆盖必经点: ${missed.join(", ")}`);
+  }
+  warnEl.innerHTML = warns.map(escapeHtml).join("<br>");
+
+  if (geom && samples) {
+    const t = estimateLapTime(geom);
+    const zv = getRouteCamZonesView();
+    const camLen = zv ? zv.zones.reduce((a, z) => a + (z.hi - z.lo + 1), 0) * samples.step : 0;
+    statsEl.textContent =
+      `预计耗时 ${t ? t.toFixed(2) : "?"} s(按固件速度决策) | ` +
+      `总长 ${(geom.totalLen / 1000).toFixed(2)} m | ` +
+      `采样点 ${samples.relDeg.length} 个 | ` +
+      `数据 ${(samples.relDeg.length * 2 / 1024).toFixed(1)} KB | ` +
+      `蓝=摄像头纠偏区 ${zv ? zv.zones.length : 0} 段 ${(camLen / 1000).toFixed(1)}m,绿=仅惯导`;
+  } else {
+    statsEl.textContent = "";
+  }
+
+  drawYawChart(samples);
+
+  const tbody = document.getElementById("turnsTable");
+  tbody.innerHTML = "";
+  if (geom) {
+    geom.turns.forEach(t => {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>${escapeHtml(t.name)}</td>
+        <td>${t.dir}</td>
+        <td>${Math.round(t.angleDeg)}°</td>
+        <td><input type="number" step="10" min="10" placeholder="${state.routeSettings.radius}"
+             value="${t.vertexIndex >= 0 && r.radii[t.vertexIndex] != null ? r.radii[t.vertexIndex] : ""}"></td>
+        <td class="${t.clamped ? "edge-bad" : ""}">${Math.round(t.actualR)}</td>
+      `;
+      const input = tr.querySelector("input");
+      input.addEventListener("change", () => {
+        if (t.vertexIndex < 0) return;
+        pushHistory();
+        const v = Number(input.value);
+        r.radii[t.vertexIndex] = (Number.isFinite(v) && v > 0) ? v : null;
+        renderAll();
+      });
+      tbody.appendChild(tr);
+    });
+  }
+}
+
+// ==================== 摄像头横向纠偏区表 ====================
+// 摄像头区:导出航向表里"连续同值"的段=直道,长度达到门槛才融合
+// 摄像头横向观测;更短的直道及弯道只使用惯导。
+function computeCamZones(vals, step, minMm) {
+  const zones = [];
+  const n = vals.length;
+  const minSamples = Math.max(2, Math.round(minMm / step));
+  if (minMm <= 0) return zones; // 0=全程惯导
+  let runStart = 0;
+  for (let i = 1; i <= n; i++) {
+    if (i < n && vals[i] === vals[runStart]) continue;
+    if (i - runStart >= minSamples) zones.push({lo: runStart, hi: i - 1, dir: 0});
+    runStart = i;
+  }
+  for (const z of zones) {
+    for (let i = z.hi; i + 1 < n; i++) {
+      let d = vals[i + 1] - vals[i]; // ±180° 卷绕安全
+      if (d > 18000) d -= 36000;
+      if (d < -18000) d += 36000;
+      if (d !== 0) { z.dir = d > 0 ? 2 : 1; break; }
+    }
+  }
+  return zones;
+}
+
+// ==================== nav_path.h 导出 ====================
+
+function generateNavPathHeader() {
+  const step = state.routeSettings.step;
+  const routesOut = [];
+
+  // 每条路线导出正/反两个方向:裁判现场指定发车方向,车上选对应下标即可
+  state.routes.forEach((r) => {
+    if (r.nodes.length < 2) return;
+    const names = r.nodes.map(id => {
+      const p = getPoint(id);
+      return p ? p.name : "?";
+    });
+    const asIs = {route: r, names};
+    const flipped = {
+      route: {nodes: [...r.nodes].reverse(), radii: [...r.radii].reverse()},
+      names: [...names].reverse()
+    };
+    const variants = routeCourseOnRight(r) ? [asIs, flipped] : [flipped, asIs];
+    variants[0].label = "正向,发车时赛道在车右边";
+    variants[1].label = "反向,发车时赛道在车左边";
+    for (const v of variants) {
+      const geom = buildRouteGeometry(v.route);
+      if (!geom) continue;
+      const samples = sampleRouteYaw(geom);
+      if (!samples.relDeg.length) continue;
+      routesOut.push({
+        index: routesOut.length,
+        name: `${r.name}(${v.label})`,
+        names: v.names,
+        geom,
+        samples
+      });
+    }
+  });
+
+  if (!routesOut.length) {
+    alert("没有可导出的路线(至少需要一条含 2 个以上节点的路线)。");
+    return null;
+  }
+
+  const lines = [];
+  lines.push("//-------------------------------------------------------------------------");
+  lines.push("// nav_path.h - 由 map_editor.html 自动生成,请勿手改");
+  lines.push(`// 生成时间: ${new Date().toLocaleString()}`);
+  lines.push(`// 采样间隔: ${step} mm; 航向单位: 0.01 度; 相对发车朝向,右转为正${state.routeSettings.invert ? "(已取反)" : ""}`);
+  lines.push(`// 坐标 nav_path_x/y 单位 mm,发车坐标系:原点=路线起点,x=发车朝向,y=其右侧`);
+  lines.push(`// 下标即 nav_select_path() 的路线号:每条路线占两个下标。`);
+  lines.push(`// 正/反已按物理规则固定:偶数=正向(发车时赛道整体在车右手边),奇数=反向(在左手边)。`);
+  routesOut.forEach(o => {
+    lines.push(`// [${o.index}] ${o.name}: ${o.names.join(" -> ")}`);
+    lines.push(`//     总长 ${(o.geom.totalLen / 1000).toFixed(2)} m, ${o.samples.relDeg.length} 点, 全局半径 ${state.routeSettings.radius} mm`);
+  });
+  lines.push("//-------------------------------------------------------------------------");
+  lines.push("#ifndef NAV_PATH_H_");
+  lines.push("#define NAV_PATH_H_");
+  lines.push("");
+  lines.push(`#define NAV_PATH_SAMPLE_MM (${step.toFixed(1)}f)`);
+  lines.push(`#define NAV_PATH_COUNT (${routesOut.length})`);
+  lines.push("");
+
+  const emitArray = (name, vals) => {
+    lines.push(`static const signed short ${name}[${vals.length}] =`);
+    lines.push("{");
+    for (let i = 0; i < vals.length; i += 16) {
+      lines.push("    " + vals.slice(i, i + 16).join(", ") + ",");
+    }
+    lines.push("};");
+    lines.push("");
+  };
+
+  // 混动接力表用:指定类型;空表发 {0} 占位(计数宏为 0,固件按计数循环不会碰它)
+  const emitTypedArray = (ctype, name, vals) => {
+    const v = vals.length ? vals : [0];
+    lines.push(`static const ${ctype} ${name}[${v.length}] =`);
+    lines.push("{");
+    for (let i = 0; i < v.length; i += 16) {
+      lines.push("    " + v.slice(i, i + 16).join(", ") + ",");
+    }
+    lines.push("};");
+  };
+
+  routesOut.forEach(o => {
+    const vals = o.samples.relDeg.map(v => Math.round(v * 100));
+    // 发车坐标系路径点:原点=路线起点,x=发车朝向,y=其右侧;取反时镜像 y
+    const p0 = samplePose(o.geom, 0);
+    const c0 = Math.cos(o.geom.startHeading);
+    const s0 = Math.sin(o.geom.startHeading);
+    const mirror = state.routeSettings.invert ? -1 : 1;
+    const xsv = [], ysv = [];
+    for (const pose of o.samples.poses) {
+      const dx = pose.x - p0.x;
+      const dy = pose.y - p0.y;
+      xsv.push(Math.round(dx * c0 + dy * s0));
+      ysv.push(Math.round(mirror * (-dx * s0 + dy * c0)));
+    }
+    lines.push(`// [${o.index}] ${o.name}: ${o.names.join(" -> ")}`);
+    emitArray(`nav_path_data_${o.index}`, vals);
+    emitArray(`nav_path_x_${o.index}`, xsv);
+    emitArray(`nav_path_y_${o.index}`, ysv);
+
+    // 摄像头横向纠偏区表
+    {
+      const zones = computeCamZones(vals, step, state.routeSettings.camZoneMinMm);
+      const m = i => (i * step / 1000).toFixed(2);
+      const dirTxt = d => (d === 1 ? "左弯" : d === 2 ? "右弯" : "终点");
+
+      lines.push(`// [${o.index}] 摄像头区 ${zones.length} 段(样本下标;区外=惯导区,连弯一口气惯导走完):`);
+      lines.push(`//     ${zones.length ? zones.map(z => `[${z.lo}..${z.hi}](${m(z.lo)}~${m(z.hi)}m)尽头${dirTxt(z.dir)}`).join(" ") : "(无:全程惯导)"}`);
+      lines.push(`#define NAV_ZONE_COUNT_${o.index} (${zones.length})`);
+      emitTypedArray("unsigned short", `nav_zone_lo_${o.index}`, zones.map(z => z.lo));
+      emitTypedArray("unsigned short", `nav_zone_hi_${o.index}`, zones.map(z => z.hi));
+      emitTypedArray("unsigned char", `nav_zone_dir_${o.index}`, zones.map(z => z.dir));
+      lines.push("");
+    }
+  });
+
+  lines.push(`static const unsigned short nav_path_point_count[NAV_PATH_COUNT] =`);
+  lines.push("{");
+  lines.push("    " + routesOut.map(o => o.samples.relDeg.length).join(", "));
+  lines.push("};");
+  lines.push("");
+  lines.push(`static const signed short *const nav_path_data[NAV_PATH_COUNT] =`);
+  lines.push("{");
+  lines.push("    " + routesOut.map(o => `nav_path_data_${o.index}`).join(", "));
+  lines.push("};");
+  lines.push("");
+  lines.push(`static const signed short *const nav_path_x[NAV_PATH_COUNT] =`);
+  lines.push("{");
+  lines.push("    " + routesOut.map(o => `nav_path_x_${o.index}`).join(", "));
+  lines.push("};");
+  lines.push("");
+  lines.push(`static const signed short *const nav_path_y[NAV_PATH_COUNT] =`);
+  lines.push("{");
+  lines.push("    " + routesOut.map(o => `nav_path_y_${o.index}`).join(", "));
+  lines.push("};");
+  lines.push("");
+
+  // 混动接力表聚合(按路线号取用)
+  const agg = (ctype, base) => {
+    lines.push(`static const ${ctype} *const ${base}[NAV_PATH_COUNT] =`);
+    lines.push("{");
+    lines.push("    " + routesOut.map(o => `${base}_${o.index}`).join(", "));
+    lines.push("};");
+  };
+  // 混动接力表聚合,NAV_HYBRID_TABLES 供固件确认区表存在
+  lines.push(`#define NAV_HYBRID_TABLES (1)`);
+  lines.push(`static const unsigned char nav_zone_count[NAV_PATH_COUNT] =`);
+  lines.push("{");
+  lines.push("    " + routesOut.map(o => `NAV_ZONE_COUNT_${o.index}`).join(", "));
+  lines.push("};");
+  agg("unsigned short", "nav_zone_lo");
+  agg("unsigned short", "nav_zone_hi");
+  agg("unsigned char", "nav_zone_dir");
+  lines.push("");
+  lines.push("#endif /* NAV_PATH_H_ */");
+  return lines.join("\n") + "\n";
+}
+
+// ==================== 本地后端(map_server.py):一键直接写文件 ====================
+let backendOk = false;
+fetch("/save-info", {cache: "no-store"})
+  .then(r => (r.ok ? r.json() : null))
+  .then(info => {
+    if (!info) return;
+    backendOk = true;
+    document.getElementById("exportNavBtn").textContent = "写入车上工程 nav_path.h";
+    document.getElementById("downloadBtn").textContent = "保存 map_config.json";
+  })
+  .catch(() => {});
+
+async function backendSave(name, content) {
+  const r = await fetch("/save", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({name, content})
+  });
+  const res = await r.json().catch(() => ({}));
+  if (!r.ok || !res.ok) throw new Error(res.error || r.statusText);
+  return res; // {path, bytes, mtime},服务器已做回读校验
+}
+
+function setExportInfo(msg, ok) {
+  const el = document.getElementById("exportInfo");
+  el.textContent = msg;
+  el.style.color = ok === undefined ? "" : (ok ? "#0a7a2f" : "#b00020");
+  el.style.fontWeight = ok === undefined ? "" : "700";
+}
+
+function flashExportBtn(text) {
+  const btn = document.getElementById("exportNavBtn");
+  const orig = btn.textContent;
+  btn.textContent = text;
+  setTimeout(() => { btn.textContent = orig; }, 2000);
+}
+
+function downloadNavPath() {
+  const text = generateNavPathHeader();
+  if (!text) return;
+  if (backendOk) {
+    setExportInfo("写入中...");
+    backendSave("nav_path.h", text)
+      .then(res => {
+        setExportInfo(`✅ 写入成功,回读校验通过:${res.path}(${(res.bytes / 1024).toFixed(1)} KB,${res.mtime})— 去 ADS 编译烧录。`, true);
+        flashExportBtn("✔ 已写入");
+      })
+      .catch(e => setExportInfo(`❌ 写入失败:${e.message} — 文件没有更新,别拿去编译!`, false));
+    return;
+  }
+  const blob = new Blob([text], {type: "text/plain"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "nav_path.h";
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function drawGrid() {
+  ctx.save();
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  const x0 = state.margin;
+  const y0 = state.margin;
+  const w = state.mapWidth * state.scale;
+  const h = state.mapHeight * state.scale;
+
+  ctx.fillStyle = "#fff";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  for (let x = 0; x <= state.mapWidth; x += state.gridStep) {
+    const sx = x0 + x * state.scale;
+    const major = x % (state.gridStep * 5) === 0;
+    ctx.strokeStyle = major ? "#c9ced8" : "#e9ecf2";
+    ctx.lineWidth = major ? 1 : 0.7;
+    ctx.beginPath();
+    ctx.moveTo(sx, y0);
+    ctx.lineTo(sx, y0 + h);
+    ctx.stroke();
+  }
+
+  for (let y = 0; y <= state.mapHeight; y += state.gridStep) {
+    const sy = y0 + y * state.scale;
+    const major = y % (state.gridStep * 5) === 0;
+    ctx.strokeStyle = major ? "#c9ced8" : "#e9ecf2";
+    ctx.lineWidth = major ? 1 : 0.7;
+    ctx.beginPath();
+    ctx.moveTo(x0, sy);
+    ctx.lineTo(x0 + w, sy);
+    ctx.stroke();
+  }
+
+  ctx.strokeStyle = "#111";
+  ctx.lineWidth = 2;
+  ctx.strokeRect(x0, y0, w, h);
+
+  // coordinate labels
+  ctx.fillStyle = "#666";
+  ctx.font = "12px sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "top";
+  for (let x = 0; x <= state.mapWidth; x += state.gridStep * 10) {
+    const sx = x0 + x * state.scale;
+    ctx.fillText(String(x), sx, y0 + h + 8);
+  }
+  ctx.textAlign = "right";
+  ctx.textBaseline = "middle";
+  for (let y = 0; y <= state.mapHeight; y += state.gridStep * 10) {
+    const sy = y0 + y * state.scale;
+    ctx.fillText(String(y), x0 - 8, sy);
+  }
+
+  ctx.restore();
+}
+
+function drawEdges() {
+  ctx.save();
+  for (const e of state.edges) {
+    const a = getPoint(e.a);
+    const b = getPoint(e.b);
+    if (!a || !b) continue;
+
+    const sa = mapToScreen(a.x, a.y);
+    const sb = mapToScreen(b.x, b.y);
+
+    ctx.strokeStyle = isOrthogonal(a, b) ? "#111" : "#c00000";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(sa.x, sa.y);
+    ctx.lineTo(sb.x, sb.y);
+    ctx.stroke();
+
+    if (state.showLengths) {
+      const mx = (sa.x + sb.x) / 2;
+      const my = (sa.y + sb.y) / 2;
+      ctx.fillStyle = "#d90000";
+      ctx.font = "bold 15px sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      const txt = isOrthogonal(a, b) ? String(Math.round(edgeLength(a, b))) : "斜线";
+      const offY = a.y === b.y ? -16 : 0;
+      const offX = a.x === b.x ? 24 : 0;
+      ctx.fillText(txt, mx + offX, my + offY);
+    }
+  }
+  ctx.restore();
+}
+
+function drawSelectedPointDimension() {
+  const p = getPoint(state.selectedPointId);
+  const mark = selectedPointDimension();
+  if (!p || !mark) return;
+
+  const sp = mapToScreen(p.x, p.y);
+  const sm = mapToScreen(mark.x, mark.y);
+  const midX = (sp.x + sm.x) / 2;
+  const midY = (sp.y + sm.y) / 2;
+  const label = `${Math.round(mark.distance)} mm  (${Math.round(mark.x)}, ${Math.round(mark.y)})`;
+
+  ctx.save();
+  ctx.strokeStyle = "#1f5cff";
+  ctx.fillStyle = "#1f5cff";
+  ctx.lineWidth = 2;
+  ctx.setLineDash([6, 4]);
+  ctx.beginPath();
+  ctx.moveTo(sp.x, sp.y);
+  ctx.lineTo(sm.x, sm.y);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  ctx.beginPath();
+  ctx.arc(sm.x, sm.y, 4, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.strokeStyle = "#1f5cff";
+  ctx.beginPath();
+  if (mark.axis === "vertical") {
+    ctx.moveTo(sp.x - 7, sp.y);
+    ctx.lineTo(sp.x + 7, sp.y);
+    ctx.moveTo(sm.x - 7, sm.y);
+    ctx.lineTo(sm.x + 7, sm.y);
+  } else {
+    ctx.moveTo(sp.x, sp.y - 7);
+    ctx.lineTo(sp.x, sp.y + 7);
+    ctx.moveTo(sm.x, sm.y - 7);
+    ctx.lineTo(sm.x, sm.y + 7);
+  }
+  ctx.stroke();
+
+  ctx.font = "bold 13px sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  const textWidth = ctx.measureText(label).width;
+  const lx = mark.axis === "vertical" ? midX + 54 : midX;
+  const ly = mark.axis === "vertical" ? midY : midY - 18;
+  ctx.fillStyle = "rgba(255,255,255,0.94)";
+  ctx.strokeStyle = "#1f5cff";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.roundRect(lx - textWidth / 2 - 7, ly - 11, textWidth + 14, 22, 6);
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = "#1f5cff";
+  ctx.fillText(label, lx, ly + 1);
+  ctx.restore();
+}
+
+function drawPoints() {
+  ctx.save();
+
+  for (const p of state.points) {
+    const s = mapToScreen(p.x, p.y);
+    const selected = p.id === state.selectedPointId || p.id === state.connectFirstId;
+
+    if (p.type === "required") {
+      ctx.fillStyle = "#000";
+      ctx.fillRect(s.x - 8, s.y - 8, 16, 16);
+    } else if (p.type === "start") {
+      ctx.fillStyle = "#1455ff";
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, 13, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "#fff";
+      ctx.font = "bold 10px sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText("S", s.x, s.y);
+    } else {
+      ctx.fillStyle = "#000";
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, 7, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    if (selected) {
+      ctx.strokeStyle = "#ff9900";
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, 17, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+
+    ctx.fillStyle = "#111";
+    ctx.font = "bold 14px sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "bottom";
+    ctx.fillText(p.name, s.x, s.y - 14);
+  }
+
+  ctx.restore();
+}
+
+function drawTempConnect() {
+  if (state.mode !== "connect" || !state.connectFirstId) return;
+  const p = getPoint(state.connectFirstId);
+  if (!p) return;
+
+  const s = mapToScreen(p.x, p.y);
+  const m = mapToScreen(state.mouse.mapX, state.mouse.mapY);
+
+  ctx.save();
+  ctx.strokeStyle = "#1455ff";
+  ctx.lineWidth = 2;
+  ctx.setLineDash([6, 5]);
+  ctx.beginPath();
+  ctx.moveTo(s.x, s.y);
+  ctx.lineTo(m.x, m.y);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function draw() {
+  drawGrid();
+  drawEdges();
+  drawRoute();
+  drawPlayback();
+  drawTempConnect();
+  drawSelectedPointDimension();
+  drawPoints();
+  updateStatus();
+  updatePointEditor();
+}
+
+function renderAll() {
+  invalidateRouteGeom();
+  draw();
+  renderTables();
+  renderRoutePanel();
+  exportJson(false);
+}
+
+function updateStatus() {
+  const status = document.getElementById("statusBox");
+  let modeName = {
+    select: "选择/拖动",
+    add: "添加点",
+    connect: "连接线",
+    delete: "删除",
+    route: "规划路径"
+  }[state.mode];
+
+  let extra = "";
+  if (state.connectFirstId) {
+    const p = getPoint(state.connectFirstId);
+    extra = `<br>连接起点：${p ? p.name : ""}`;
+  }
+
+  const selected = getPoint(state.selectedPointId);
+  if (selected) {
+    extra += `<br>选中：${selected.name} (${selected.x}, ${selected.y})`;
+  }
+
+  status.innerHTML =
+    `模式：${modeName}<br>` +
+    `鼠标坐标：(${Math.round(state.mouse.mapX)}, ${Math.round(state.mouse.mapY)})<br>` +
+    `点：${state.points.length}，线：${state.edges.length}` +
+    extra;
+}
+
+function renderTables() {
+  const ptBody = document.getElementById("pointsTable");
+  ptBody.innerHTML = "";
+
+  for (const p of state.points) {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td><input class="name" value="${escapeHtml(p.name)}"></td>
+      <td><input type="number" value="${p.x}"></td>
+      <td><input type="number" value="${p.y}"></td>
+      <td>
+        <select>
+          <option value="node" ${p.type === "node" ? "selected" : ""}>node</option>
+          <option value="required" ${p.type === "required" ? "selected" : ""}>required</option>
+          <option value="start" ${p.type === "start" ? "selected" : ""}>start</option>
+        </select>
+      </td>
+      <td><button class="small-btn danger">删</button></td>
+    `;
+
+    const inputs = tr.querySelectorAll("input");
+    const sel = tr.querySelector("select");
+    const del = tr.querySelector("button");
+
+    tr.addEventListener("click", () => {
+      state.selectedPointId = p.id;
+      draw();
+    });
+
+    inputs[0].addEventListener("change", () => {
+      pushHistory();
+      p.name = inputs[0].value.trim() || p.name;
+      renderAll();
+    });
+    inputs[1].addEventListener("change", () => {
+      pushHistory();
+      p.x = Number(inputs[1].value);
+      renderAll();
+    });
+    inputs[2].addEventListener("change", () => {
+      pushHistory();
+      p.y = Number(inputs[2].value);
+      renderAll();
+    });
+    sel.addEventListener("change", () => {
+      pushHistory();
+      p.type = sel.value;
+      renderAll();
+    });
+    del.addEventListener("click", (ev) => {
+      ev.stopPropagation();
+      removePoint(p.id);
+    });
+
+    ptBody.appendChild(tr);
+  }
+
+  const edBody = document.getElementById("edgesTable");
+  edBody.innerHTML = "";
+
+  state.edges.forEach((e, idx) => {
+    const a = getPoint(e.a);
+    const b = getPoint(e.b);
+    if (!a || !b) return;
+    const tr = document.createElement("tr");
+    const ok = isOrthogonal(a, b);
+    const len = ok ? Math.round(edgeLength(a, b)) : "斜线";
+    tr.innerHTML = `
+      <td>${escapeHtml(a.name)}</td>
+      <td>${escapeHtml(b.name)}</td>
+      <td class="${ok ? "" : "edge-bad"}">${len}</td>
+      <td><button class="small-btn danger">删</button></td>
+    `;
+    tr.querySelector("button").addEventListener("click", () => removeEdge(idx));
+    edBody.appendChild(tr);
+  });
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#039;"
+  }[c]));
+}
+
+function exportData() {
+  const nodePoints = state.points.filter(p => p.type !== "required");
+  const nodes = {};
+  for (const p of nodePoints) {
+    nodes[p.name] = [Math.round(p.x), Math.round(p.y)];
+  }
+
+  const nameById = {};
+  for (const p of state.points) nameById[p.id] = p.name;
+
+  const edges = state.edges
+    .map(e => [nameById[e.a], nameById[e.b]])
+    .filter(e => e[0] && e[1]);
+
+  const required_points = state.points
+    .filter(p => p.type === "required")
+    .map(p => ({
+      name: p.name,
+      coord: [Math.round(p.x), Math.round(p.y)],
+      label: p.name
+    }));
+
+  const startPoint = state.points.find(p => p.type === "start");
+
+  const routes = state.routes
+    .map(r => ({name: r.name, nodes: r.nodes.map(id => nameById[id]).filter(Boolean), radii: r.radii}))
+    .filter(r => r.nodes.length > 0);
+
+  const data = {
+    title: "赛道导线地图",
+    dpi: 220,
+    nodes,
+    edges,
+    start: startPoint ? {
+      name: startPoint.name,
+      coord: [Math.round(startPoint.x), Math.round(startPoint.y)],
+      label: "发车点"
+    } : undefined,
+    required_points,
+    routes: routes.length ? routes : undefined,
+    route_settings: {
+      radius: state.routeSettings.radius,
+      step: state.routeSettings.step,
+      invert: state.routeSettings.invert,
+      skip_collinear: state.routeSettings.skipCollinear,
+      cam_zone_min_mm: state.routeSettings.camZoneMinMm,
+      speed_cfg: {
+        v_max: Number(document.getElementById("spdMax").value) || 3.8,
+        v_corner: Number(document.getElementById("spdCorner").value) || 3.0,
+        brake_dist: Number(document.getElementById("spdBrakeDist").value) || 0.5
+      },
+      // 发车方向按点名持久化(点 id 每次导入都会重新生成)
+      start_dir: state.routeSettings.startDir ? (getPoint(state.routeSettings.startDir) || {}).name : undefined
+    }
+  };
+
+  if (!data.start) delete data.start;
+  if (!data.routes) delete data.routes;
+  return data;
+}
+
+function exportJson(writeToBox = true) {
+  const text = JSON.stringify(exportData(), null, 2);
+  if (writeToBox) document.getElementById("jsonText").value = text;
+  return text;
+}
+
+function importJson() {
+  const txt = document.getElementById("jsonText").value.trim();
+  if (!txt) return;
+
+  let data;
+  try {
+    data = JSON.parse(txt);
+  } catch (e) {
+    alert("JSON 解析失败：" + e.message);
+    return;
+  }
+
+  applyImportedData(data);
+}
+
+function applyImportedData(data) {
+  pushHistory();
+
+  state.points = [];
+  state.edges = [];
+  state.selectedPointId = null;
+  state.connectFirstId = null;
+
+  const idByName = {};
+
+  if (data.nodes) {
+    for (const [name, xy] of Object.entries(data.nodes)) {
+      const id = "p_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2, 7);
+      state.points.push({
+        id,
+        name,
+        x: Number(xy[0]),
+        y: Number(xy[1]),
+        type: "node"
+      });
+      idByName[name] = id;
+    }
+  }
+
+  if (data.start) {
+    let coord = data.start.coord;
+    if (!coord && data.start.edge && data.start.offset != null) {
+      const a = state.points.find(p => p.name === data.start.edge[0]);
+      const b = state.points.find(p => p.name === data.start.edge[1]);
+      if (a && b) coord = pointOnSegment(a, b, Number(data.start.offset));
+    }
+    if (coord) {
+      const id = "p_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2, 7);
+      state.points.push({
+        id,
+        name: data.start.name || "S0",
+        x: Number(coord[0]),
+        y: Number(coord[1]),
+        type: "start"
+      });
+      idByName[data.start.name || "S0"] = id;
+    }
+  }
+
+  for (const rp of data.required_points || []) {
+    let coord = rp.coord;
+    if (!coord && rp.edge && rp.offset != null) {
+      const a = state.points.find(p => p.name === rp.edge[0]);
+      const b = state.points.find(p => p.name === rp.edge[1]);
+      if (a && b) coord = pointOnSegment(a, b, Number(rp.offset));
+    }
+    if (!coord) continue;
+    const name = rp.name || ("X" + (state.points.length + 1));
+    const id = "p_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2, 7);
+    state.points.push({
+      id,
+      name,
+      x: Number(coord[0]),
+      y: Number(coord[1]),
+      type: "required"
+    });
+    idByName[name] = id;
+  }
+
+  for (const e of data.edges || []) {
+    const aName = Array.isArray(e) ? e[0] : e.u;
+    const bName = Array.isArray(e) ? e[1] : e.v;
+    if (idByName[aName] && idByName[bName]) {
+      state.edges.push({a: idByName[aName], b: idByName[bName]});
+    }
+  }
+
+  state.routes = [
+    {name: "路线1", nodes: [], radii: []},
+    {name: "路线2", nodes: [], radii: []},
+    {name: "路线3", nodes: [], radii: []}
+  ];
+  (data.routes || []).slice(0, 3).forEach((r, i) => {
+    const nodes = [];
+    const radii = [];
+    (r.nodes || []).forEach((name, k) => {
+      if (!idByName[name]) return;
+      nodes.push(idByName[name]);
+      radii.push(r.radii && r.radii[k] != null ? r.radii[k] : null);
+    });
+    state.routes[i].nodes = nodes;
+    state.routes[i].radii = radii;
+    if (r.name) state.routes[i].name = r.name;
+  });
+  // 兼容旧格式:单条 route 按点名数组
+  if (!data.routes && Array.isArray(data.route)) {
+    const nodes = data.route.map(n => idByName[n]).filter(Boolean);
+    state.routes[0].nodes = nodes;
+    state.routes[0].radii = nodes.map(() => null);
+  }
+  if (data.route_settings) {
+    const rs = data.route_settings;
+    if (Number.isFinite(rs.radius) && rs.radius > 0) state.routeSettings.radius = rs.radius;
+    if (Number.isFinite(rs.step) && rs.step >= 1) state.routeSettings.step = rs.step;
+    state.routeSettings.invert = !!rs.invert;
+    /* 旧文件里的 ease 不再导入:缓和段已去掉,恒为纯圆弧 */
+    if (rs.skip_collinear !== undefined) state.routeSettings.skipCollinear = !!rs.skip_collinear;
+    if (Number.isFinite(rs.cam_zone_min_mm) && rs.cam_zone_min_mm >= 0) {
+      state.routeSettings.camZoneMinMm = rs.cam_zone_min_mm;
+      document.getElementById("camZoneMin").value = rs.cam_zone_min_mm;
+    }
+    if (rs.speed_cfg) {
+      if (Number.isFinite(rs.speed_cfg.v_max)) document.getElementById("spdMax").value = rs.speed_cfg.v_max;
+      if (Number.isFinite(rs.speed_cfg.v_corner)) document.getElementById("spdCorner").value = rs.speed_cfg.v_corner;
+      if (Number.isFinite(rs.speed_cfg.brake_dist)) document.getElementById("spdBrakeDist").value = rs.speed_cfg.brake_dist;
+    }
+    state.routeSettings.startDir = (rs.start_dir && idByName[rs.start_dir]) ? idByName[rs.start_dir] : null;
+    document.getElementById("routeRadius").value = state.routeSettings.radius;
+    document.getElementById("routeStep").value = state.routeSettings.step;
+    document.getElementById("routeInvert").checked = state.routeSettings.invert;
+    document.getElementById("routeSkipCollinear").checked = state.routeSettings.skipCollinear;
+  }
+
+  fitMapToData();
+  resizeCanvas();
+  renderAll();
+}
+
+function pointOnSegment(a, b, offset) {
+  if (a.x === b.x) {
+    const dir = b.y > a.y ? 1 : -1;
+    return [a.x, a.y + dir * offset];
+  }
+  if (a.y === b.y) {
+    const dir = b.x > a.x ? 1 : -1;
+    return [a.x + dir * offset, a.y];
+  }
+  return [a.x, a.y];
+}
+
+function fitMapToData() {
+  if (state.points.length === 0) return;
+  const maxX = Math.max(...state.points.map(p => p.x));
+  const maxY = Math.max(...state.points.map(p => p.y));
+  state.mapWidth = Math.ceil(maxX / 100) * 100;
+  state.mapHeight = Math.ceil(maxY / 100) * 100;
+  document.getElementById("mapWidth").value = state.mapWidth;
+  document.getElementById("mapHeight").value = state.mapHeight;
+}
+
+function downloadJson() {
+  const text = exportJson(false);
+  if (backendOk) {
+    backendSave("map_config.json", text)
+      .then(res => setExportInfo(`✅ 地图已保存:${res.path}(${res.mtime})`, true))
+      .catch(e => setExportInfo(`❌ 地图保存失败:${e.message}`, false));
+    return;
+  }
+  const blob = new Blob([text], {type: "application/json"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "map_config.json";
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function applyViewInputs() {
+  state.mapWidth = Number(document.getElementById("mapWidth").value);
+  state.mapHeight = Number(document.getElementById("mapHeight").value);
+  state.gridStep = Number(document.getElementById("gridStep").value);
+  state.scale = Number(document.getElementById("scaleInput").value);
+  state.snap = document.getElementById("snapCheck").checked;
+  state.showLengths = document.getElementById("lengthCheck").checked;
+  resizeCanvas();
+  draw();
+}
+
+function renumberPoints() {
+  pushHistory();
+  const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  let nodeIdx = 0;
+  let reqIdx = 1;
+  let startIdx = 0;
+
+  for (const p of state.points) {
+    if (p.type === "node") {
+      p.name = nodeIdx < letters.length ? letters[nodeIdx] : "N" + (nodeIdx + 1);
+      nodeIdx++;
+    } else if (p.type === "required") {
+      p.name = "X" + reqIdx++;
+    } else if (p.type === "start") {
+      p.name = startIdx === 0 ? "S0" : "S" + startIdx;
+      startIdx++;
+    }
+  }
+  renderAll();
+}
+
+canvas.addEventListener("mousedown", (ev) => {
+  const mp = screenToMap(ev.clientX, ev.clientY);
+  const p = hitPoint(mp.x, mp.y);
+  const edgeIdx = hitEdge(mp.x, mp.y);
+
+  if (state.mode === "add") {
+    addPoint(mp.x, mp.y);
+    return;
+  }
+
+  if (state.mode === "connect") {
+    if (!p) return;
+    if (!state.connectFirstId) {
+      state.connectFirstId = p.id;
+      state.selectedPointId = p.id;
+      draw();
+    } else {
+      addEdge(state.connectFirstId, p.id);
+      state.connectFirstId = null;
+      state.selectedPointId = p.id;
+      draw();
+    }
+    return;
+  }
+
+  if (state.mode === "route") {
+    if (ev.button === 0 && p) routePushNode(p.id);
+    return;
+  }
+
+  if (state.mode === "delete") {
+    if (p) {
+      removePoint(p.id);
+    } else if (edgeIdx >= 0) {
+      removeEdge(edgeIdx);
+    }
+    return;
+  }
+
+  if (state.mode === "select") {
+    if (p) {
+      state.selectedPointId = p.id;
+      state.draggingId = p.id;
+      state.dragSnapshot = cloneData();
+      state.dragMoved = false;
+      state.dragOffset.x = p.x - mp.x;
+      state.dragOffset.y = p.y - mp.y;
+      draw();
+    } else {
+      state.selectedPointId = null;
+      draw();
+    }
+  }
+});
+
+canvas.addEventListener("mousemove", (ev) => {
+  const mp = screenToMap(ev.clientX, ev.clientY);
+  state.mouse.mapX = mp.x;
+  state.mouse.mapY = mp.y;
+
+  if (state.draggingId) {
+    const p = getPoint(state.draggingId);
+    if (p) {
+      const nextX = Math.max(0, Math.min(state.mapWidth, snapValue(mp.x + state.dragOffset.x)));
+      const nextY = Math.max(0, Math.min(state.mapHeight, snapValue(mp.y + state.dragOffset.y)));
+      if (p.x !== nextX || p.y !== nextY) state.dragMoved = true;
+      p.x = nextX;
+      p.y = nextY;
+      invalidateRouteGeom();
+      renderTables();
+    }
+  }
+  draw();
+});
+
+canvas.addEventListener("mouseup", () => {
+  finishDrag();
+});
+
+canvas.addEventListener("contextmenu", (ev) => {
+  if (state.mode !== "route") return;
+  ev.preventDefault();
+  routePopNode();
+});
+
+canvas.addEventListener("mouseleave", () => {
+  finishDrag();
+});
+
+canvas.addEventListener("dblclick", (ev) => {
+  if (state.mode !== "select") return;
+  const mp = screenToMap(ev.clientX, ev.clientY);
+  const p = hitPoint(mp.x, mp.y);
+  if (!p) addPoint(mp.x, mp.y);
+});
+
+document.getElementById("modeSelect").onclick = () => setMode("select");
+document.getElementById("modeAdd").onclick = () => setMode("add");
+document.getElementById("modeConnect").onclick = () => setMode("connect");
+document.getElementById("modeDelete").onclick = () => setMode("delete");
+document.getElementById("modeRoute").onclick = () => setMode("route");
+
+for (let i = 0; i < 3; i++) {
+  document.getElementById("routeSel" + i).addEventListener("click", () => {
+    state.activeRouteIdx = i;
+    invalidateRouteGeom();
+    draw();
+    renderRoutePanel();
+  });
+}
+document.getElementById("routeEnterBtn").onclick = () => setMode("route");
+document.getElementById("routePopBtn").onclick = routePopNode;
+document.getElementById("routeReverseBtn").onclick = routeReverse;
+document.getElementById("routeClearBtn").onclick = routeClear;
+document.getElementById("exportNavBtn").onclick = downloadNavPath;
+document.getElementById("routeRadius").addEventListener("change", () => {
+  const v = Number(document.getElementById("routeRadius").value);
+  if (Number.isFinite(v) && v > 0) state.routeSettings.radius = v;
+  invalidateRouteGeom();
+  draw();
+  renderRoutePanel();
+});
+document.getElementById("routeStep").addEventListener("change", () => {
+  const v = Number(document.getElementById("routeStep").value);
+  if (Number.isFinite(v) && v >= 1) state.routeSettings.step = v;
+  renderRoutePanel();
+});
+document.getElementById("routeSkipCollinear").addEventListener("change", () => {
+  state.routeSettings.skipCollinear = document.getElementById("routeSkipCollinear").checked;
+  invalidateRouteGeom();
+  draw();
+  renderRoutePanel();
+});
+document.getElementById("camZoneMin").addEventListener("change", () => {
+  const v = Number(document.getElementById("camZoneMin").value);
+  if (Number.isFinite(v) && v >= 0) state.routeSettings.camZoneMinMm = v;
+  draw(); // 地图上的蓝色摄像头区随门槛实时变化
+  renderRoutePanel();
+});
+document.getElementById("routeInvert").addEventListener("change", () => {
+  state.routeSettings.invert = document.getElementById("routeInvert").checked;
+  renderRoutePanel();
+});
+document.getElementById("playBtn").addEventListener("click", togglePlayback);
+for (const id of ["spdMax", "spdCorner", "spdBrakeDist"]) {
+  document.getElementById(id).addEventListener("change", renderRoutePanel);
+}
+document.getElementById("startDirSel").addEventListener("change", () => {
+  state.routeSettings.startDir = document.getElementById("startDirSel").value || null;
+});
+document.getElementById("undoBtn").onclick = undo;
+for (const input of [pointEditorX, pointEditorY]) {
+  input.addEventListener("change", commitPointEditor);
+  input.addEventListener("keydown", (ev) => {
+    if (ev.key === "Enter") {
+      input.blur();
+      commitPointEditor();
+    } else if (ev.key === "Escape") {
+      updatePointEditor();
+      input.blur();
+    }
+  });
+}
+document.addEventListener("keydown", (ev) => {
+  if (!(ev.ctrlKey || ev.metaKey) || ev.key.toLowerCase() !== "z") return;
+  if (isEditingElement(ev.target)) return;
+  ev.preventDefault();
+  undo();
+});
+document.getElementById("applyViewBtn").onclick = applyViewInputs;
+document.getElementById("exportBtn").onclick = () => exportJson(true);
+document.getElementById("importBtn").onclick = importJson;
+document.getElementById("downloadBtn").onclick = downloadJson;
+document.getElementById("addPointBtn").onclick = () => {
+  addPoint(state.mapWidth / 2, state.mapHeight / 2);
+};
+document.getElementById("renumberBtn").onclick = renumberPoints;
+
+document.getElementById("clearBtn").onclick = () => {
+  if (!confirm("确定清空全部点和线？")) return;
+  pushHistory();
+  state.points = [];
+  state.edges = [];
+  state.selectedPointId = null;
+  state.connectFirstId = null;
+  renderAll();
+};
+
+for (const id of ["snapCheck", "lengthCheck"]) {
+  document.getElementById(id).addEventListener("change", applyViewInputs);
+}
+
+for (const id of ["mapWidth", "mapHeight", "gridStep", "scaleInput"]) {
+  document.getElementById(id).addEventListener("change", applyViewInputs);
+}
+
+document.querySelectorAll(".tab").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".tab").forEach(x => x.classList.remove("active"));
+    btn.classList.add("active");
+    const tab = btn.dataset.tab;
+    for (const name of ["points", "edges", "route", "json", "help"]) {
+      document.getElementById("tab-" + name).style.display = name === tab ? "block" : "none";
+    }
+    if (tab === "json") exportJson(true);
+  });
+});
+
+// ==================== 内嵌地图与自动加载 ====================
+
+const EMBEDDED_MAPS = {
+  yusai: {"title":"疯狂电路组预赛赛道导线地图","dpi":220,"nodes":{"A":[0,0],"B":[550,0],"C":[1000,0],"D":[2200,0],"E":[0,2200],"F":[550,2200],"G":[1000,2200],"T":[1600,2200],"H":[2200,2200],"I":[550,1350],"L":[1000,450],"J":[1000,1350],"Q":[1000,1750],"M":[1600,450],"O":[1600,900],"R":[1600,1750],"N":[2200,450],"P":[2200,900],"K":[2200,1350],"S":[2200,1750]},"edges":[["A","B"],["B","C"],["C","D"],["A","E"],["E","F"],["F","G"],["G","T"],["T","H"],["B","I"],["I","F"],["C","L"],["L","J"],["I","J"],["J","K"],["D","N"],["N","P"],["P","K"],["K","S"],["S","H"],["L","M"],["M","N"],["M","O"],["O","P"],["Q","R"],["R","S"],["Q","G"],["R","T"]],"start":{"name":"S0","coord":[0,960],"label":"发车点"},"required_points":[{"name":"X1","coord":[180,0],"label":"A-B顶左元件"},{"name":"X2","coord":[0,400],"label":"A-E圆形元件"},{"name":"X3","coord":[0,950],"label":"A-E电容/计时器附近"},{"name":"X4","coord":[0,1950],"label":"A-E开关"},{"name":"X5","coord":[550,600],"label":"B-I竖线元件"},{"name":"X6","coord":[1000,0],"label":"C三岔元件"},{"name":"X7","coord":[1450,0],"label":"C-D电容元件"},{"name":"X8","coord":[1900,0],"label":"C-D二极管元件"},{"name":"X9","coord":[1280,450],"label":"L-M元件"},{"name":"X10","coord":[1900,450],"label":"M-N元件"},{"name":"X11","coord":[1900,900],"label":"O-P元件"},{"name":"X12","coord":[1000,1350],"label":"J三岔元件"},{"name":"X13","coord":[1550,1350],"label":"J-K元件"},{"name":"X14","coord":[2200,1350],"label":"K三岔元件"},{"name":"X15","coord":[1600,1750],"label":"R三岔元件"},{"name":"X16","coord":[1300,2200],"label":"G-T底部元件"},{"name":"X17","coord":[2000,2200],"label":"T-H底部元件"}],"route":["S0","E","F","G","T","H","S","R","T","H","S","K","J","I","B","C","D","N","M","O","P","N","M","L","C","B","A","S0"]},
+  juesai: {"title":"赛道导线地图","dpi":220,"nodes":{"A":[0,0],"B":[550,0],"C":[1000,0],"D":[2200,0],"E":[0,2200],"F":[550,2200],"G":[1000,2200],"T":[1600,2200],"H":[2200,2200],"I":[550,1350],"L":[1000,450],"J":[1000,1350],"Q":[1000,1750],"M":[1600,450],"O":[1600,900],"R":[1600,1750],"N":[2200,450],"P":[2200,900],"K":[2200,1350],"S":[2200,1750],"S0":[0,1110],"P37":[0,1875],"P38":[2600,0],"P39":[3350,0],"P40":[3350,500],"P41":[2600,500],"P42":[2600,900],"P43":[2600,1100],"P44":[3600,500],"P45":[3600,1100],"P46":[3200,1100],"P47":[3200,1750],"P48":[3200,2200],"P49":[3600,1750],"P50":[3600,2200],"P51":[3600,0]},"edges":[["A","B"],["B","C"],["C","D"],["A","E"],["E","F"],["F","G"],["G","T"],["T","H"],["B","I"],["I","F"],["C","L"],["L","J"],["I","J"],["J","K"],["D","N"],["N","P"],["P","K"],["K","S"],["S","H"],["L","M"],["M","N"],["M","O"],["O","P"],["Q","R"],["R","S"],["Q","G"],["R","T"],["P38","D"],["P39","P40"],["P41","P38"],["P39","P38"],["P41","P40"],["P44","P40"],["P41","P42"],["P42","P"],["P45","P46"],["P43","P42"],["P46","P43"],["S","P47"],["P48","P47"],["P47","P46"],["P49","P47"],["P48","H"],["P49","P50"],["P45","P49"],["P50","P48"],["P51","P44"],["P51","P39"],["P44","P45"]],"start":{"name":"S0","coord":[0,1110],"label":"发车点"},"required_points":[{"name":"X1","coord":[255,0],"label":"X1"},{"name":"X2","coord":[0,475],"label":"X2"},{"name":"X5","coord":[550,675],"label":"X5"},{"name":"X6","coord":[1000,0],"label":"X6"},{"name":"X7","coord":[1405,0],"label":"X7"},{"name":"X8","coord":[1795,0],"label":"X8"},{"name":"X9","coord":[1305,450],"label":"X9"},{"name":"X10","coord":[1875,450],"label":"X10"},{"name":"X11","coord":[1905,900],"label":"X11"},{"name":"X12","coord":[1000,1350],"label":"X12"},{"name":"X13","coord":[1525,1350],"label":"X13"},{"name":"X14","coord":[2200,1350],"label":"X14"},{"name":"X15","coord":[1600,1750],"label":"X15"},{"name":"X16","coord":[1220,2200],"label":"X16"},{"name":"X17","coord":[1850,2200],"label":"X17"},{"name":"P52","coord":[2875,0],"label":"P52"},{"name":"P53","coord":[3350,0],"label":"P53"},{"name":"P55","coord":[2600,500],"label":"P55"},{"name":"P56","coord":[2855,1100],"label":"P56"},{"name":"P57","coord":[3075,500],"label":"P57"},{"name":"P58","coord":[3600,775],"label":"P58"},{"name":"P59","coord":[3200,1100],"label":"P59"},{"name":"P60","coord":[2935,1750],"label":"P60"},{"name":"P61","coord":[2555,1750],"label":"P61"},{"name":"P62","coord":[3600,1475],"label":"P62"},{"name":"P63","coord":[3200,2200],"label":"P63"},{"name":"P64","coord":[2775,2195],"label":"P64"}],"routes":[{"name":"路线1","nodes":["S0","X2","A","X1","B","C","L","X9","M","O","X11","P","N","X10","M","X9","L","C","X7","X8","D","P38","P52","P39","P51","P44","P58","P45","P46","P56","P43","P42","P41","P57","P40","P44","P58","P45","P62","P49","P47","P60","P61","S","R","Q","G","X16","T","X17","H","P64","P48","P47","P60","P61","S","K","X13","J","I","X5","B","X1","A","X2","S0"],"radii":[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null]}],"route_settings":{"radius":200,"step":5,"invert":false,"skip_collinear":true}}
+};
+
+async function loadMapFile(key) {
+  let data = null;
+  // 优先读同目录下的 json 文件(需要 http 方式打开才生效),失败则用内嵌数据
+  try {
+    const resp = await fetch(key + ".json", {cache: "no-store"});
+    if (resp.ok) data = await resp.json();
+  } catch (e) { /* file:// 打开时 fetch 会被拦,走内嵌 */ }
+  if (!data) data = EMBEDDED_MAPS[key];
+  if (!data) return;
+  applyImportedData(data);
+  // 地图本身不带路线时,自动生成三条候选路线
+  if (!state.routes.some(r => r.nodes.length)) {
+    autoPlanRoute();
+  }
+}
+
+// ==================== 自动规划:经过所有必经点的最短路线 ====================
+
+// 构建规划用图:普通边 + 把落在边上的必经点/发车点拆进边里
+// 与已有顶点重合的点不进图,记为别名(路过宿主顶点即覆盖)
+// 返回 {adj: Map<id, [{to, w}]>, unplaced: [name], alias: Map<id, hostId>}
+function buildPlanGraph() {
+  const adj = new Map();
+  const alias = new Map();
+  const addArc = (a, b, w) => {
+    if (!adj.has(a)) adj.set(a, []);
+    if (!adj.has(b)) adj.set(b, []);
+    adj.get(a).push({to: b, w});
+    adj.get(b).push({to: a, w});
+  };
+  const dist = (p, q) => Math.hypot(p.x - q.x, p.y - q.y);
+
+  // 参与连线的点集合
+  const inEdges = new Set();
+  for (const e of state.edges) {
+    inEdges.add(e.a);
+    inEdges.add(e.b);
+  }
+
+  // 需要挂到图上的游离点(发车点/必经点,没有任何连线的)
+  const floating = state.points.filter(p =>
+    (p.type === "required" || p.type === "start") && !inEdges.has(p.id));
+
+  // 每条边上收集其覆盖的游离点
+  const TOL = 30; // mm
+  const onEdge = state.edges.map(() => []);
+  const unplaced = [];
+
+  for (const fp of floating) {
+    // 先看是否与某个已连线的点重合:重合的记别名,路过宿主即算覆盖
+    let merged = false;
+    for (const p of state.points) {
+      if (!inEdges.has(p.id) || p.id === fp.id) continue;
+      if (dist(p, fp) < 1) {
+        alias.set(fp.id, p.id);
+        merged = true;
+        break;
+      }
+    }
+    if (merged) continue;
+
+    // 找它落在哪条边上
+    let bestEdge = -1, bestD = TOL;
+    state.edges.forEach((e, idx) => {
+      const a = getPoint(e.a);
+      const b = getPoint(e.b);
+      if (!a || !b) return;
+      const d = distPointToSegment(fp.x, fp.y, a.x, a.y, b.x, b.y);
+      if (d < bestD) { bestD = d; bestEdge = idx; }
+    });
+    if (bestEdge >= 0) {
+      onEdge[bestEdge].push(fp);
+    } else {
+      unplaced.push(fp.name);
+    }
+  }
+
+  // 生成邻接:没有边上点的边直接加,有的按沿边顺序串联
+  state.edges.forEach((e, idx) => {
+    const a = getPoint(e.a);
+    const b = getPoint(e.b);
+    if (!a || !b) return;
+    const pts = onEdge[idx];
+    if (!pts.length) {
+      addArc(e.a, e.b, dist(a, b));
+      return;
+    }
+    const chain = [a, ...pts.sort((p, q) => dist(a, p) - dist(a, q)), b];
+    const ids = [e.a, ...pts.map(p => p.id), e.b];
+    for (let i = 0; i + 1 < chain.length; i++) {
+      addArc(ids[i], ids[i + 1], dist(chain[i], chain[i + 1]));
+    }
+  });
+
+  return {adj, unplaced, alias};
+}
+
+// 方向敏感 Dijkstra:状态 = (顶点, 来向顶点),掉头(退回来向)加重罚
+// 这样规划出的路线会自然选择"穿过"边中间的必经点而不是进去再倒出来
+const UTURN_PENALTY = 100000; // mm
+
+function stateKey(v, f) {
+  return v + "|" + (f || "");
+}
+
+function dijkstraDirectional(adj, srcV, srcFrom, forcedFirst, turnPenalty = 0) {
+  const distState = new Map();
+  const prevState = new Map();
+  const done = new Set();
+  const srcKey = stateKey(srcV, srcFrom);
+  distState.set(srcKey, 0);
+  while (true) {
+    let uk = null, best = Infinity;
+    for (const [k, d] of distState) {
+      if (!done.has(k) && d < best) { best = d; uk = k; }
+    }
+    if (uk === null) break;
+    done.add(uk);
+    const sep = uk.indexOf("|");
+    const v = uk.slice(0, sep);
+    const f = uk.slice(sep + 1);
+    for (const {to, w} of adj.get(v) || []) {
+      if (forcedFirst && uk === srcKey && to !== forcedFirst) continue; // 指定发车方向
+      let nd = best + w + (f && to === f ? UTURN_PENALTY : 0);
+      // 多直道规划:转过 30° 就计一次罚分,宁可绕远也少拐弯
+      if (turnPenalty && f && to !== f) {
+        const pf = getPoint(f), pv = getPoint(v), pt = getPoint(to);
+        if (pf && pv && pt) {
+          const l1 = Math.hypot(pv.x - pf.x, pv.y - pf.y);
+          const l2 = Math.hypot(pt.x - pv.x, pt.y - pv.y);
+          if (l1 > 1e-6 && l2 > 1e-6) {
+            const dot = ((pv.x - pf.x) * (pt.x - pv.x) + (pv.y - pf.y) * (pt.y - pv.y)) / (l1 * l2);
+            if (dot < Math.cos(Math.PI / 6)) nd += turnPenalty;
+          }
+        }
+      }
+      const nk = stateKey(to, v);
+      if (nd < (distState.get(nk) ?? Infinity)) {
+        distState.set(nk, nd);
+        prevState.set(nk, uk);
+      }
+    }
+  }
+  return {distState, prevState};
+}
+
+// 在方向状态里找到达某顶点的最优状态
+function bestToVertex(res, v) {
+  let d = Infinity, key = null;
+  for (const [k, dd] of res.distState) {
+    if (k.slice(0, k.indexOf("|")) === v && dd < d) { d = dd; key = k; }
+  }
+  return {d, key};
+}
+
+// 从状态链还原顶点序列
+function statePathVertices(res, srcKey, endKey) {
+  const keys = [endKey];
+  let cur = endKey;
+  while (cur !== srcKey) {
+    cur = res.prevState.get(cur);
+    if (cur == null) return null;
+    keys.push(cur);
+  }
+  keys.reverse();
+  return keys.map(k => k.slice(0, k.indexOf("|")));
+}
+
+function autoPlanNotice(msg) {
+  document.getElementById("autoPlanInfo").textContent = msg;
+}
+
+// 一次生成三条路线:自动最短 + 各发车方向 + 回程取反,去重后填入 路线1/2/3。
+// 直接覆盖不弹确认(可 Ctrl+Z 撤销),结果写在按钮下方的提示区。
+function autoPlanRoute() {
+  const startPoint = state.points.find(p => p.type === "start");
+  const required = state.points.filter(p => p.type === "required");
+  if (!startPoint) { autoPlanNotice("没有发车点(type=start)。"); return; }
+  if (!required.length) { autoPlanNotice("没有必经点(type=required)。"); return; }
+
+  const {adj, unplaced, alias} = buildPlanGraph();
+  const startV = adj.has(startPoint.id) ? startPoint.id : alias.get(startPoint.id);
+  if (!startV || !adj.has(startV)) { autoPlanNotice("发车点不在任何赛道边附近,无法规划。"); return; }
+
+  // 目标顶点:必经点本身在图上的用自己,与顶点重合的用宿主顶点(路过即覆盖)
+  const missing = [...unplaced];
+  const targetSet = new Set();
+  for (const p of required) {
+    const vid = adj.has(p.id) ? p.id : alias.get(p.id);
+    if (vid && adj.has(vid)) targetSet.add(vid);
+    else if (!unplaced.includes(p.name)) missing.push(p.name);
+  }
+  targetSet.delete(startV);
+
+  const startKey = stateKey(startV, null);
+
+  // 预筛掉从发车点不可达的目标(不带方向约束)
+  const unreachable = [];
+  {
+    const res0 = dijkstraDirectional(adj, startV, null, null);
+    for (const t of [...targetSet]) {
+      if (bestToVertex(res0, t).d === Infinity) {
+        const p = getPoint(t);
+        unreachable.push(p ? p.name : t);
+        targetSet.delete(t);
+      }
+    }
+  }
+  if (!targetSet.size) { autoPlanNotice("没有可达的必经目标,无法规划。"); return; }
+
+  // 规划一批候选:forcedStartDir 限定发车方向(null=自动),loop 是否回到发车点,
+  // turnPenalty>0 时按"少拐弯"优化(多直道)
+  const planWith = (forcedStartDir, loop, turnPenalty = 0) => {
+  // 方向敏感 Dijkstra 结果缓存(同一候选内图不变),按状态键索引;
+  // 起点键预置受约束的搜索结果,后续所有从起点出发的寻路自动生效
+  const dijMemo = new Map();
+  const dijByKey = (key) => {
+    if (!dijMemo.has(key)) {
+      const sep = key.indexOf("|");
+      dijMemo.set(key, dijkstraDirectional(adj, key.slice(0, sep), key.slice(sep + 1) || null, null, turnPenalty));
+    }
+    return dijMemo.get(key);
+  };
+  const dij = (v, f) => dijByKey(stateKey(v, f));
+  dijMemo.set(startKey, dijkstraDirectional(adj, startV, null, forcedStartDir, turnPenalty));
+
+  // ---------- 精确规划:走廊分解 + Held-Karp ----------
+  // 无掉头约束下,度为 2 的顶点链(走廊)只能整体穿过,因此
+  // "覆盖边中间的必经点" 等价于 "完整走完它所在的走廊"。
+  // 实体 = 必经走廊(2 个方向) + 必经路口(每个来向一个模式),
+  // 实体数不大时用子集 DP 精确求最优,否则退回启发式。
+  const planExact = () => {
+    const deg = v => (adj.get(v) || []).length;
+    const isBreak = v => deg(v) !== 2 || v === startV;
+    const ekey = (a, b) => a < b ? a + ">" + b : b + ">" + a;
+    const pdist = (a, b) => {
+      const pa = getPoint(a), pb = getPoint(b);
+      return Math.hypot(pa.x - pb.x, pa.y - pb.y);
+    };
+
+    // 找所有走廊(断点到断点的链;发车点也视为断点)
+    const corridors = [];
+    const seenE = new Set();
+    for (const v of adj.keys()) {
+      if (!isBreak(v)) continue;
+      for (const {to} of adj.get(v)) {
+        if (seenE.has(ekey(v, to))) continue;
+        const chain = [v];
+        let prev = v, cur = to;
+        seenE.add(ekey(v, to));
+        chain.push(cur);
+        while (!isBreak(cur)) {
+          const nx = adj.get(cur).find(n => n.to !== prev);
+          if (!nx) break;
+          seenE.add(ekey(cur, nx.to));
+          prev = cur;
+          cur = nx.to;
+          chain.push(cur);
+        }
+        corridors.push(chain);
+      }
+    }
+
+    // 必经走廊:内部含目标点
+    const reqCorridors = corridors.filter(ch =>
+      ch.slice(1, -1).some(v => targetSet.has(v)));
+    const coveredEnds = new Set();
+    for (const ch of reqCorridors) {
+      coveredEnds.add(ch[0]);
+      coveredEnds.add(ch[ch.length - 1]);
+    }
+    // 必经路口:目标点本身是断点,且不被必经走廊端点顺带覆盖
+    const reqJunctions = [...targetSet].filter(v =>
+      isBreak(v) && !coveredEnds.has(v));
+    // 防御:所有度 2 目标都应落在某条必经走廊内部
+    const inCorr = new Set();
+    for (const ch of reqCorridors) ch.slice(1, -1).forEach(v => inCorr.add(v));
+    for (const t of targetSet) {
+      if (!isBreak(t) && !inCorr.has(t)) return null;
+    }
+
+    const nEnt = reqCorridors.length + reqJunctions.length;
+    if (nEnt === 0 || nEnt > 18) return null;
+
+    // 模式表:走廊正/反两个方向;路口每个来向一个模式
+    const modes = [];
+    reqCorridors.forEach((ch, ci) => {
+      let len = 0;
+      for (let i = 0; i + 1 < ch.length; i++) len += pdist(ch[i], ch[i + 1]);
+      for (const dir of [ch, [...ch].reverse()]) {
+        modes.push({
+          ent: ci,
+          entryV: dir[0],
+          entryFirst: dir[1],
+          exitKey: stateKey(dir[dir.length - 1], dir[dir.length - 2]),
+          len,
+          chain: dir
+        });
+      }
+    });
+    reqJunctions.forEach((j, ji) => {
+      for (const {to} of adj.get(j)) {
+        modes.push({
+          ent: reqCorridors.length + ji,
+          entryV: j,
+          entryFirst: null,
+          exitKey: stateKey(j, to),
+          len: 0,
+          chain: [j]
+        });
+      }
+    });
+    const M = modes.length;
+
+    // 从某状态出发完成某模式的代价与最优到达状态
+    const legCost = (srcKey, m) => {
+      const res = dijByKey(srcKey);
+      if (m.entryFirst === null) {
+        const d = res.distState.get(m.exitKey);
+        return d == null ? null : {cost: d, arriveKey: m.exitKey};
+      }
+      let best = Infinity, bestKey = null;
+      for (const [k, d] of res.distState) {
+        const sep = k.indexOf("|");
+        if (k.slice(0, sep) !== m.entryV) continue;
+        let c = d + (k.slice(sep + 1) === m.entryFirst ? UTURN_PENALTY : 0);
+        // 走廊入口就是发车点且原地进入时,受发车方向约束
+        if (forcedStartDir && k === startKey && m.entryFirst !== forcedStartDir) c += UTURN_PENALTY;
+        if (c < best) { best = c; bestKey = k; }
+      }
+      return bestKey === null ? null : {cost: best + m.len, arriveKey: bestKey};
+    };
+
+    const fromStart = modes.map(m => legCost(startKey, m));
+    const trans = modes.map(m1 => modes.map(m2 =>
+      m1.ent === m2.ent ? null : legCost(m1.exitKey, m2)));
+    const retToStart = loop ? modes.map(m => {
+      const res = dijByKey(m.exitKey);
+      const {d, key} = bestToVertex(res, startV);
+      return key ? {cost: d, arriveKey: key} : null;
+    }) : null;
+
+    // Held-Karp 子集 DP
+    const FULLMASK = (1 << nEnt) - 1;
+    const dp = new Float64Array((FULLMASK + 1) * M).fill(Infinity);
+    const par = new Int32Array((FULLMASK + 1) * M).fill(-1);
+    for (let m = 0; m < M; m++) {
+      if (fromStart[m]) dp[(1 << modes[m].ent) * M + m] = fromStart[m].cost;
+    }
+    for (let mask = 1; mask <= FULLMASK; mask++) {
+      const base = mask * M;
+      for (let m = 0; m < M; m++) {
+        const d = dp[base + m];
+        if (d === Infinity) continue;
+        const tRow = trans[m];
+        for (let m2 = 0; m2 < M; m2++) {
+          const e2 = modes[m2].ent;
+          if (mask & (1 << e2)) continue;
+          const t = tRow[m2];
+          if (!t) continue;
+          const ni = (mask | (1 << e2)) * M + m2;
+          const nd = d + t.cost;
+          if (nd < dp[ni]) { dp[ni] = nd; par[ni] = base + m; }
+        }
+      }
+    }
+
+    // 从某个收尾模式回溯出完整顶点路径
+    const reconstruct = (endMode) => {
+      const seq = [];
+      let cur = FULLMASK * M + endMode;
+      while (cur >= 0) {
+        seq.push(cur % M);
+        cur = par[cur];
+      }
+      seq.reverse();
+      const full = [startV];
+      let curKey = startKey;
+      for (const mi of seq) {
+        const m = modes[mi];
+        const lc = legCost(curKey, m);
+        if (!lc) return null;
+        const verts = statePathVertices(dijByKey(curKey), curKey, lc.arriveKey);
+        if (!verts) return null;
+        for (let i = 1; i < verts.length; i++) full.push(verts[i]);
+        for (let i = 1; i < m.chain.length; i++) full.push(m.chain[i]);
+        curKey = m.exitKey;
+      }
+      if (loop) {
+        const rt = retToStart[endMode];
+        if (!rt) return null;
+        const verts = statePathVertices(dijByKey(curKey), curKey, rt.arriveKey);
+        if (verts) for (let i = 1; i < verts.length; i++) full.push(verts[i]);
+      }
+      return full;
+    };
+
+    // 所有可行收尾模式按总代价排序,各回溯一条 → 最优/次优/... 候选池。
+    // 环线正着跑反着跑是同一条,用正反字符串较小者做去重键。
+    const ends = [];
+    for (let m = 0; m < M; m++) {
+      const d = dp[FULLMASK * M + m];
+      if (d === Infinity) continue;
+      const rt = loop ? retToStart[m] : null;
+      if (loop && !rt) continue;
+      ends.push({m, total: d + (loop ? rt.cost : 0)});
+    }
+    if (!ends.length) return null;
+    ends.sort((a, b) => a.total - b.total);
+    const out = [];
+    const seenSeq = new Set();
+    for (const e of ends) {
+      if (out.length >= 6) break;
+      const full = reconstruct(e.m);
+      if (!full) continue;
+      const fwd = full.join(">");
+      const rev = [...full].reverse().join(">");
+      const key = fwd < rev ? fwd : rev;
+      if (seenSeq.has(key)) continue;
+      seenSeq.add(key);
+      out.push({full, total: e.total, exact: true});
+    }
+    return out.length ? out : null;
+  };
+
+  // ---------- 启发式兜底:最近邻 + 2-opt(实体太多时用) ----------
+  const planHeuristic = () => {
+    const simulate = (order) => {
+      let curV = startV, curFrom = null, total = 0;
+      const covered = new Set([startV]);
+      const full = [startV];
+      for (const t of order) {
+        if (covered.has(t)) continue;
+        const res = dij(curV, curFrom);
+        const {d, key} = bestToVertex(res, t);
+        if (!key) return null;
+        const verts = statePathVertices(res, stateKey(curV, curFrom), key);
+        if (!verts) return null;
+        total += d;
+        for (let i = 1; i < verts.length; i++) {
+          full.push(verts[i]);
+          covered.add(verts[i]);
+        }
+        curFrom = verts.length >= 2 ? verts[verts.length - 2] : curFrom;
+        curV = t;
+      }
+      if (loop) {
+        const res = dij(curV, curFrom);
+        const {d, key} = bestToVertex(res, startV);
+        if (key) {
+          total += d;
+          const verts = statePathVertices(res, stateKey(curV, curFrom), key);
+          if (verts) for (let i = 1; i < verts.length; i++) full.push(verts[i]);
+        }
+      }
+      return {total, full};
+    };
+
+    // 最近邻构造初始顺序(带顺路吸收)
+    const todo = new Set(targetSet);
+    let visitOrder = [];
+    let curV = startV, curFrom = null;
+    while (todo.size) {
+      const res = dij(curV, curFrom);
+      let bestT = null, bestD = Infinity, bestKey = null;
+      for (const t of todo) {
+        const {d, key} = bestToVertex(res, t);
+        if (d < bestD) { bestD = d; bestT = t; bestKey = key; }
+      }
+      if (bestT === null) break;
+      const verts = statePathVertices(res, stateKey(curV, curFrom), bestKey);
+      for (let i = 1; i < verts.length; i++) {
+        if (todo.has(verts[i])) {
+          todo.delete(verts[i]);
+          visitOrder.push(verts[i]);
+        }
+      }
+      curFrom = verts.length >= 2 ? verts[verts.length - 2] : curFrom;
+      curV = bestT;
+    }
+
+    let bestRes = simulate(visitOrder);
+    if (!bestRes) return null;
+    let improved = true;
+    while (improved) {
+      improved = false;
+      for (let i = 0; i < visitOrder.length - 1; i++) {
+        for (let j = i + 1; j < visitOrder.length; j++) {
+          const cand = visitOrder.slice(0, i)
+            .concat(visitOrder.slice(i, j + 1).reverse(), visitOrder.slice(j + 1));
+          const res = simulate(cand);
+          if (res && res.total < bestRes.total - 1e-6) {
+            visitOrder = cand;
+            bestRes = res;
+            improved = true;
+          }
+        }
+      }
+    }
+    return [{full: bestRes.full, total: bestRes.total, exact: false}];
+  };
+
+  return planExact() || planHeuristic();
+  }; // planWith
+
+  // 一次精确 DP 产出候选池:路线1=最优,路线2=次优,路线3=弯最少(多直道)。
+  // 跑行方向不占路线位:「发车方向」下拉限定起跑朝向,「反转路线」调头,导出自带正/反。
+  const loopChecked = document.getElementById("autoPlanLoop").checked;
+  const fd0 = state.routeSettings.startDir;
+  const userDir = (fd0 && (adj.get(startV) || []).some(nb => nb.to === fd0)) ? fd0 : null;
+  // 候选池 = 最短里程 + 中等转弯代价(400mm/弯) + 强少弯(2000mm/弯)。
+  // "能直行就直行":多档罚分产出不同直行倾向的候选,最终由耗时+弯数记账排序定夺。
+  const pool = [
+    ...(planWith(userDir, loopChecked) || []),
+    ...(planWith(userDir, loopChecked, 400) || []),
+    ...(planWith(userDir, loopChecked, 2000) || [])
+  ];
+  if (!pool.length) { autoPlanNotice("规划失败:目标不连通。"); return; }
+
+  const canonKey = (full) => {
+    const fwd = full.join(">");
+    const rev = [...full].reverse().join(">");
+    return fwd < rev ? fwd : rev;
+  };
+  const uniq = [];
+  const seenC = new Set();
+  for (const c of pool) {
+    const k = canonKey(c.full);
+    if (seenC.has(k)) continue;
+    seenC.add(k);
+    uniq.push(c);
+  }
+
+  // 排序 = 预计耗时 + 每弯 50ms 记账("能直行就直行"):
+  // 弯是跟踪误差、打滑和校准中断的来源,物理模型算不出这些成本;
+  // 50ms/弯 等效于愿意为省掉一个弯多绕 19cm 直道。想更激进改 rankOf 里的系数。
+  // 折线上的实际转弯数(>30° 才算)
+  const turnsOf = (full) => {
+    const pts = full.map(id => getPoint(id)).filter(Boolean);
+    let turns = 0;
+    for (let i = 1; i + 1 < pts.length; i++) {
+      const a = pts[i - 1], b = pts[i], c = pts[i + 1];
+      const l1 = Math.hypot(b.x - a.x, b.y - a.y);
+      const l2 = Math.hypot(c.x - b.x, c.y - b.y);
+      if (l1 < 1e-6 || l2 < 1e-6) continue;
+      const dot = ((b.x - a.x) * (c.x - b.x) + (b.y - a.y) * (c.y - b.y)) / (l1 * l2);
+      if (dot < Math.cos(Math.PI / 6)) turns++;
+    }
+    return turns;
+  };
+
+  const scoreOf = (full) => {
+    const geom = buildRouteGeometry({nodes: full, radii: []});
+    if (!geom) return {time: Infinity, len: 0, turns: 999};
+    return {time: estimateLapTime(geom), len: geom.totalLen, turns: turnsOf(full)};
+  };
+  const rankOf = (s) => s.time + s.turns * 0.05;
+
+  // 环段翻转局部优化:同一节点两次访问之间的整段,反着走端点不变、
+  // 用的还是同一批边(无向图),但转弯数可能完全不同——
+  // 例:S 处"右转进环再两次直角回来"(5 弯) vs "直穿进环绕回来"(3 弯),
+  // 里程相同,DP 按里程算是平局随便选。逐环试反向,更快/弯更少就换,直到收敛。
+  const improveLoops = (full) => {
+    let best = full.slice();
+    let bestScore = scoreOf(best);
+    let improved = true;
+    while (improved) {
+      improved = false;
+      const seen = new Map();
+      for (let i = 0; i < best.length && !improved; i++) {
+        const id = best[i];
+        if (seen.has(id)) {
+          for (const j0 of seen.get(id)) {
+            if (i - j0 < 3) continue;
+            const cand = best.slice(0, j0 + 1)
+              .concat(best.slice(j0 + 1, i).reverse(), best.slice(i));
+            const s = scoreOf(cand);
+            if (rankOf(s) < rankOf(bestScore) - 1e-6) {
+              best = cand;
+              bestScore = s;
+              improved = true;
+              break;
+            }
+          }
+        }
+        if (!seen.has(id)) seen.set(id, []);
+        seen.get(id).push(i);
+      }
+    }
+    return {full: best, score: bestScore};
+  };
+
+  for (const c of uniq) {
+    const r = improveLoops(c.full);
+    c.full = r.full;
+    c.time = r.score.time;
+    c.len = r.score.len;
+    c.turns = r.score.turns;
+  }
+  // 局部优化后可能撞车,再去一次重
+  {
+    const seen2 = new Set();
+    for (let i = uniq.length - 1; i >= 0; i--) {
+      const k = canonKey(uniq[i].full);
+      if (seen2.has(k)) uniq.splice(i, 1);
+      else seen2.add(k);
+    }
+  }
+  uniq.sort((a, b) => rankOf(a) - rankOf(b));
+  const picks = uniq.slice(0, 3).map((c, i) => ({...c, label: ["最快", "次快", "第三"][i]}));
+
+  const plans = picks.map(p => {
+    // 检查残留掉头(罚分挡不住说明确实绕不开)
+    const uturnAt = [];
+    for (let i = 0; i + 2 < p.full.length; i++) {
+      if (p.full[i] === p.full[i + 2]) {
+        const q = getPoint(p.full[i + 1]);
+        if (q) uturnAt.push(q.name);
+      }
+    }
+    return {...p, uturnAt};
+  });
+
+  pushHistory();
+  for (let i = 0; i < 3; i++) {
+    const r = state.routes[i];
+    if (plans[i]) {
+      // 存进去的顺序就是正向(赛道在车右边):播放流向看到的即正向
+      let full = plans[i].full.slice();
+      if (!routeCourseOnRight({nodes: full, radii: []})) full.reverse();
+      r.nodes = full;
+      r.radii = full.map(() => null);
+    } else {
+      r.nodes = [];
+      r.radii = [];
+    }
+  }
+  renderAll();
+
+  const lines = plans.map((p, i) =>
+    `路线${i + 1}(${p.label}): 预计 ${p.time === Infinity ? "?" : p.time.toFixed(2)} s` +
+    `,${(p.len / 1000).toFixed(2)} m,${p.turns} 弯${p.exact ? "" : "(启发式)"}` +
+    `${p.uturnAt.length ? ",掉头@" + p.uturnAt.join("/") : ""}`);
+  lines.unshift(`已按预计耗时排序生成 ${plans.length} 条路线,覆盖 ${targetSet.size} 个必经目标(可撤销):`);
+  lines.push("三条路线已按正向摆好(发车时赛道在车右边),播放流向看到的就是正向;导出时每条另带反向一份。");
+  if (plans.length < 3) lines.push(`可行的不同方案只有 ${plans.length} 种,其余路线已清空。`);
+  if (missing.length) lines.push(`不在任何边上,已忽略: ${missing.join(", ")}`);
+  if (unreachable.length) lines.push(`与发车点不连通,已忽略: ${unreachable.join(", ")}`);
+  autoPlanNotice(lines.join("\n"));
+}
+
+document.getElementById("autoPlanBtn").onclick = autoPlanRoute;
+document.getElementById("loadMapBtn").onclick = () => {
+  loadMapFile(document.getElementById("mapSelect").value);
+};
+// 切地图直接加载,不用再点按钮(改坏了可 Ctrl+Z 或点"重新加载")
+document.getElementById("mapSelect").addEventListener("change", () => {
+  loadMapFile(document.getElementById("mapSelect").value);
+});
+
+// 初始化:自动加载决赛地图(下拉框默认值)
+resizeCanvas();
+renderAll();
+loadMapFile(document.getElementById("mapSelect").value);
+</script>
+</body>
+</html>

@@ -1,0 +1,9 @@
+0000000000000000000000000000000000000000 aaca7ac6f588a1eb5281757c5d18ffb5053fcc83 浮梦 <zfs1116@qq.com> 1783336036 +0800	commit (initial): feat: add map editor undo and point annotations
+aaca7ac6f588a1eb5281757c5d18ffb5053fcc83 f02293fe00d586c4e98e51d284dcba21a0467627 浮梦 <zfs1116@qq.com> 1784008318 +0800	commit: 生成"等图像"拉线门表 nav_action_gate + 收录服务端/路线文件
+f02293fe00d586c4e98e51d284dcba21a0467627 40f7ece4c77e9629534c83c2e82030315d9951e1 浮梦 <zfs1116@qq.com> 1784470520 +0800	commit: 速度决策段表导出:直道/弯道分段速度+刹车提前量,烘进 nav_path.h
+40f7ece4c77e9629534c83c2e82030315d9951e1 cdf057f2d530de935cd6879e2c36d93d413bd27c 浮梦 <zfs1116@qq.com> 1784470550 +0800	commit (amend): 速度决策段表导出 + 收录此前未提交的编辑器改动(耗时恒速模型等)
+cdf057f2d530de935cd6879e2c36d93d413bd27c ae7f7043ca1b4588d9cc4c28f495d8f77bc05a85 浮梦 <zfs1116@qq.com> 1784471560 +0800	commit: 速度悬浮提示:鼠标靠近路线显示该处 里程·段类型·速度
+ae7f7043ca1b4588d9cc4c28f495d8f77bc05a85 4ee3550d9e8beba82952db6cd1fa6ccab10d7e2e 浮梦 <zfs1116@qq.com> 1784471886 +0800	commit: 合并重复的直道速度输入:删除独立的"耗时估算速度",估算直读速度段表直道速度
+4ee3550d9e8beba82952db6cd1fa6ccab10d7e2e 70eeb0ceb59847feced70799ddced1350d626551 浮梦 <zfs1116@qq.com> 1786537670 +0800	commit: feat: update yusai map generator and route export
+70eeb0ceb59847feced70799ddced1350d626551 017d06e122567269f98f6f5afa4d130b4a953b66 浮梦 <zfs1116@qq.com> 1786726188 +0800	commit: feat: refine map calibration exclusion zones
+017d06e122567269f98f6f5afa4d130b4a953b66 fbc6716462c183e92e79b4472f68ad19532380be 浮梦 <zfs1116@qq.com> 1786878046 +0800	commit: feat: refine single-route scan feature export
