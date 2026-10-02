@@ -24,7 +24,8 @@ MDK-ARM/Listings/
 *.lst
 *.sct
 
-# ===== 编辑器 / 工程临时 =====
+# ===== 编辑器 / IDE 自己的东西 =====
+.qoder-cn/
 *.uvguix.*
 *.dbgconf
 RTE/
