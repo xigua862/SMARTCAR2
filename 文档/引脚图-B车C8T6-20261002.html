@@ -39,7 +39,7 @@
 <div class="container">
 
 <h1>🔌 B 车 · STM32F103C8T6 自画板 引脚图</h1>
-<p class="subtitle"><b>v1.8 · 2026-10-03</b> · 配套《框架定稿-B车C8T6-20261002.md》<b> v1.8</b> · 灰度 = <b>外购龙邱 8 路模拟量模块</b>（自画子板作废）· 逻辑轨 12V→<b>5V</b>→AMS1117→3.3V · 分板 = <b>结构底板（无元件）+ 上方电路板</b> · 物理脚号以立创库/数据手册为准，本表锁功能映射</p>
+<p class="subtitle"><b>v1.8 · 2026-10-03</b> · 配套《框架定稿-B车C8T6-20261002.md》<b> v1.8</b> · 灰度 = <b>外购龙邱 8 路模拟量模块</b>（自画子板作废）· 逻辑轨 12V→<b>5V</b>→ME6211C33→3.3V · 分板 = <b>结构底板（无元件）+ 上方电路板</b> · 物理脚号以立创库/数据手册为准，本表锁功能映射</p>
 
 <div class="legend">
   <span class="lg-sensor">■ 灰度/编码器</span>
@@ -60,7 +60,7 @@
   <tbody>
 
   <tr><td colspan="6" class="section-title">① 灰度 —— 外购龙邱 8 路<b>模拟量</b>模块（地址选通式：<b>1 ADC + 3 GPIO</b>）</td></tr>
-  <tr><td class="pin">PA0</td><td class="sig c-sensor">AD0</td><td>OUT</td><td class="c-warn">❌ 非FT</td><td class="c-sensor">模块 AD0</td><td style="text-align:left" rowspan="4">★ <b>AD0/AD1/AD2 放在 PA0~PA2 = 同一端口连续 3 位</b> → 一次 <span class="sig">GPIOA-&gt;BSRR</span> 写就切通道，切换开销最小<br>★ <b>模拟量进 PA3 = ADC1_IN3</b>；模块供 <b>3.3V</b> ⇒ 输出即 3.3V 域 ⇒ <b>非 FT 脚可直连</b>（省掉 16 只分压电阻）<br>⚠ 若买到的模块是 5V 输出：每路加 <b>1k/2.2k 分压</b>（只串一只电阻是错的）<br>★ 判据：<b>每通道归一化后加权</b> <span class="sig">p=(v-v_black)/(v_white-v_black)</span> → <span class="sig">err=Σ(w·p)/Σp</span>，<b>不再用整口读 0/1</b><br>★ 轮询预算：每通道 50µs → 8 通道 <b>400µs</b> → 1.2m/s 走 0.48mm（占 11mm 档 4.4%）✅ 前提是 <b>settling ≤20µs</b></td></tr>
+  <tr><td class="pin">PA0</td><td class="sig c-sensor">AD0</td><td>OUT</td><td class="c-warn">❌ 非FT</td><td class="c-sensor">模块 AD0</td><td style="text-align:left" rowspan="4">★ <b>AD0/AD1/AD2 放在 PA0~PA2 = 同一端口连续 3 位</b> → 一次 <span class="sig">GPIOA-&gt;BSRR</span> 写就切通道，切换开销最小<br>★ <b>模拟量进 PA3 = ADC1_IN3</b>。⚠ <b>模块供 5V ⇒ AO 是 5V 电平 ⇒ 必须分压</b>：<span class="sig">AO ── 1k ──┬── PA3 ; 1.5k ── GND ; 100nF ── GND</span>（5V→3.0V；源阻抗 600Ω，ADC 够用）。<b>AD0~AD2 是 MCU 输出的控制线，直连、不分压</b><br>★ 判据：<b>每通道归一化后加权</b> <span class="sig">p=(v-v_black)/(v_white-v_black)</span> → <span class="sig">err=Σ(w·p)/Σp</span>，<b>不再用整口读 0/1</b><br>★ 轮询预算：每通道 50µs → 8 通道 <b>400µs</b> → 1.2m/s 走 0.48mm（占 11mm 档 4.4%）✅ 前提是 <b>settling ≤20µs</b></td></tr>
   <tr><td class="pin">PA1</td><td class="sig c-sensor">AD1</td><td>OUT</td><td class="c-warn">❌ 非FT</td><td class="c-sensor">模块 AD1</td></tr>
   <tr><td class="pin">PA2</td><td class="sig c-sensor">AD2</td><td>OUT</td><td class="c-warn">❌ 非FT</td><td class="c-sensor">模块 AD2</td></tr>
   <tr><td class="pin">PA3</td><td class="sig c-sensor">AO（模拟量）</td><td>IN</td><td class="c-warn">❌ 非FT</td><td class="c-sensor">模块 OUT/AO</td></tr>
@@ -102,9 +102,9 @@
 
   <tr><td colspan="6" class="section-title">⑥ 电源与地</td></tr>
   <tr><td class="pin">VM</td><td class="sig c-power">+12.6V 功率轨</td><td>—</td><td class="c-power">—</td><td class="c-power">XT30 → PTC → TVS → AT8236 VM</td><td style="text-align:left">电机/风机<b>直给 12V</b>，绝不允许走逻辑轨<br>★ <b>开关优先取消</b>（船型开关是插件件、朝下会刮/误动作）→ 用"发车时插 XT30"当总开关<br>★ 若拆板：<b>VM 与 AT8236 全留驱动板</b>，过板只走 5V+GND+PWM，<b>大电流不过连接器</b></td></tr>
-  <tr><td class="pin">VIN</td><td class="sig c-power">+5V 中间轨</td><td>—</td><td class="c-power">—</td><td class="c-power">12V→<b>5V</b> 降压模块</td><td style="text-align:left"><b>v1.8：子板作废后这一轨只喂灰度模块</b>（≈170mA）+ LDO 输入（≈120）→ 模块要能连续 <b>≥250mA</b>。<br>⚠ 仍买 <b>5V</b> 不买 4.7V（保守）；输入耐压覆盖 12.6V；输出并 220µF 降纹波（<b>纹波直进陀螺 → Z 零偏漂</b>）</td></tr>
-  <tr><td class="pin">5V</td><td class="sig c-power">+5V → 灰度模块</td><td>—</td><td class="c-power">—</td><td class="c-power">模块 VCC</td><td style="text-align:left">★ <b>建议给模块供 3.3V</b>（输出即 3.3V 域 → PA0~PA3 非 FT 可直连）；用 5V 就必须每路分压</td></tr>
-  <tr><td class="pin">3V3</td><td class="sig c-power">+3.3V</td><td>—</td><td class="c-power">—</td><td class="c-power">AMS1117-3.3 ← <b>5V</b></td><td style="text-align:left">⚠ <b>严禁 RT9013</b>（250mA）。v1.8 预算：MCU/IMU 60 + 上拉与杂 30~50 ≈ <b>90~120mA</b> → 选 <b>≥300mA</b>；LDO 耗 (5−3.3)×0.12 = <b>0.2W</b> ✅<br>⚠ <b>严禁让 LDO 直吃 12.6V</b>（1.1W → 热保护），5V 那一级不能省</td></tr>
+  <tr><td class="pin">VIN</td><td class="sig c-power">+5V 中间轨</td><td>—</td><td class="c-power">—</td><td class="c-power">12V→<b>5V</b> 降压模块</td><td style="text-align:left"><b>v1.8：子板作废后这一轨只喂灰度模块</b>（≈170mA）+ LDO 输入（≈120）≈ <b>290mA</b> → 模块要能连续 <b>≥400mA</b>。<br>⚠ 仍买 <b>5V</b> 不买 4.7V（保守）；输入耐压覆盖 12.6V；输出并 220µF 降纹波（<b>纹波直进陀螺 → Z 零偏漂</b>）</td></tr>
+  <tr><td class="pin">5V</td><td class="sig c-power">+5V → 灰度模块</td><td>—</td><td class="c-power">—</td><td class="c-power">模块 VCC</td><td style="text-align:left">★ <b>模块 VCC 接 5V</b>：宽压下发射管更亮 → 直接对冲"喷绘布对比度"这个头号风险；且不占 LDO。<b>代价只有 AO 一路分压</b></td></tr>
+  <tr><td class="pin">3V3</td><td class="sig c-power">+3.3V</td><td>—</td><td class="c-power">—</td><td class="c-power">ME6211C33M5G-N ← <b>5V</b></td><td style="text-align:left">⚠ <b>严禁 RT9013</b>。预算：MCU/IMU/编码器/上拉/蜂鸣 ≈ <b>120mA</b> → ME6211C33 够（下单前核一眼 datasheet 的 Iout）；LDO 耗 (5−3.3)×0.12 = <b>0.2W</b> ✅<br>⚠ <b>严禁让 LDO 直吃 12.6V</b>（1.1W → 热保护），5V 那一级不能省</td></tr>
   <tr><td class="pin">GND</td><td class="sig c-power">星形单点地</td><td>—</td><td class="c-power">—</td><td class="c-power">功率地/逻辑地/灰度地 在输出电容负极汇一点</td><td style="text-align:left"><b>灰度模拟回线不穿功率区</b>；若拆板，过板地针 ≥3 根</td></tr>
   </tbody>
 </table>
@@ -119,7 +119,7 @@
     <tr><td class="c-sensor">PA1</td><td class="c-sensor">AD1</td><td>地址位 1</td></tr>
     <tr><td class="c-sensor">PA2</td><td class="c-sensor">AD2</td><td>地址位 2（8 通道选通）</td></tr>
     <tr><td class="c-sensor">PA3 / ADC1_IN3</td><td class="c-sensor">OUT / AO</td><td>模拟量输出 → 12bit ADC</td></tr>
-    <tr><td class="c-power">3V3</td><td class="c-power">VCC</td><td><b>供 3.3V</b> → 输出即 3.3V 域 → 直连非 FT 脚</td></tr>
+    <tr><td class="c-power">5V</td><td class="c-power">VCC</td><td><b>供 5V</b>（发射管更亮，不占 LDO）→ <b>AO 需 1k/1.5k 分压</b>进 PA3</td></tr>
     <tr><td class="c-power">GND</td><td class="c-power">GND</td><td>与主板共地（模拟回线不穿功率区）</td></tr>
   </tbody>
 </table>
@@ -156,8 +156,8 @@
 <div class="note-box" style="background:#eaf2f8;border-left-color:#3498db">
 3S 锂电 11.1~12.6V（已有 2000mAh，63×18×15）→ <strong>XT30</strong> → PTC 自恢复保险 → TVS<br>
 ├─ <strong>功率轨 VM 12.6V</strong> → AT8236 ×2(+1预留) → 电机 / 风机　<span style="color:#c0392b">走线 ≥1.2mm@1oz、铺铜开窗加锡、就近 470µF/25V + 0.1µF×3、OUT→端子 100nF+磁珠、电机线 ≤10cm 双绞 18AWG</span><br>
-└─ <strong>逻辑轨</strong> → 12V→<strong>5V</strong> 降压模块（⚠ 不能是 4.7V）→ 一路给<b>灰度模块</b>（≈170mA），另一路 → AMS1117-3.3（≥300mA）→ <strong>3.3V</strong> = MCU / IMU / 灰度信号侧 / 蜂鸣<br>
-<span style="color:#c0392b">5V 预算：模块 ≈170 + LDO 输入 ≈120 ≈ <b>290mA</b> → 模块连续 <b>≥250mA</b>（保守留余量）；3.3V ≈ 90~120mA，LDO 耗 (5−3.3)×0.12 = 0.2W ✅</span><br>
+└─ <strong>逻辑轨</strong> → 12V→<strong>5V</strong> 降压模块（⚠ 不能是 4.7V）→ 一路给<b>灰度模块 VCC</b>（≈170mA，宽压下发射管更亮），另一路 → <b>ME6211C33M5G-N</b> → <strong>3.3V</strong> = MCU / IMU / 编码器 / 蜂鸣（≈120mA）<br>
+<span style="color:#c0392b">5V 预算：模块 ≈170 + LDO 输入 ≈120 ≈ <b>290mA</b> → 模块连续 <b>≥400mA</b>；3.3V ≈ 120mA（ME6211C33 够），LDO 耗 (5−3.3)×0.12 = 0.2W ✅</span><br>
 <br>
 ★ 严禁 4S。★ <b>严禁让 LDO 直吃 12.6V</b>（(12.6−3.3)×0.12 = 1.1W → SOT-223 热保护）—— 降压那一级必须有。★ 每颗 AT8236 必须设 3A 限流。<br>
 ★ 若拆成两块板：<b>功率级（VM/AT8236/大电容/降压模块）全留驱动板</b>，过板只走 <span class="sig">5V + GND + 4路PWM</span>（≈0.3A，2×6 带锁扣，<b>地针 ≥3</b>，PWM 串 22~47Ω）。
