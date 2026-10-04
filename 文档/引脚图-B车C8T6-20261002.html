@@ -112,6 +112,30 @@
   </tbody>
 </table>
 
+<!-- ===== 各模块供电与电平总表 ===== -->
+<div class="tb-section">
+<h3>⚡ 各模块供电与电平总表（★ 接错电压就烧，接线前逐条对）</h3>
+<table>
+  <thead><tr><th style="width:170px">模块</th><th style="width:120px">供电</th><th style="width:120px">信号电平</th><th>说明 / 坑</th></tr></thead>
+  <tbody>
+    <tr><td colspan="4" class="section-title">3.3V 组 —— 逻辑与传感（MCU / 陀螺 / 编码器 / 人机）</td></tr>
+    <tr><td><b>STM32F103C8T6</b></td><td class="c-power">3.3V</td><td class="c-power">3.3V</td><td>VDD_1/2/3 + VBAT 都接 3.3V；<b>VDDA 单独走 磁珠 + 1µF + 100nF</b></td></tr>
+    <tr><td><b>逐飞 IMU660RC</b>（陀螺）</td><td class="c-power">3.3V</td><td class="c-power">3.3V</td><td>模块 3.3~5V 都行，给 3.3V 电平天然匹配</td></tr>
+    <tr><td><b>逐飞迷你编码器 Pro ×2</b></td><td class="c-power">3.3V</td><td class="c-power">3.3V</td><td>输出跟随 VCC ⇒ 3.3V 直进 MCU，不用管 FT</td></tr>
+    <tr><td>蜂鸣器（有源）/ LED / 按键</td><td class="c-power">3.3V</td><td class="c-power">3.3V</td><td>按键接 GND + 内部上拉</td></tr>
+    <tr><td colspan="4" class="section-title">5V 组 —— <b>只有灰度模块</b>（为了发射管更亮，见上节）</td></tr>
+    <tr><td><b>灰度模块（龙邱 8 路）</b></td><td class="c-warn">5V</td><td class="c-warn">输出 5V ⇒ 要分压</td><td>★ 5V 下发射管更亮 → 对冲"喷绘布对比度"风险；代价：<b>A0~A7 共 8 组 1k/1.5k 分压 + 100nF</b>。<br>⚠ <b>别接 3.3V</b>（发射管变暗、白瞎余量）；<b>别接 12V/VM</b>（烧）</td></tr>
+    <tr><td colspan="4" class="section-title">VM / 12.6V 组 —— 功率（电池直给，绝不走逻辑轨）</td></tr>
+    <tr><td><b>AT8236 ×3 的 VM</b></td><td class="c-motor">VM 12.6V</td><td class="c-motor">逻辑侧 3.3V</td><td>IN1/IN2 来自 MCU（3.3V）；<b>VREF 接 3.3V</b>（→ 限流 = 3.3/(10×0.11) = 3A）</td></tr>
+    <tr><td><b>电机 ×2 / 负压风机</b></td><td class="c-motor">VM（经 AT8236）</td><td>—</td><td>风机 5Ω → 约 2.5A</td></tr>
+    <tr><td colspan="4" class="section-title">电源层级（谁从谁出来）</td></tr>
+    <tr><td>电池 3S</td><td class="c-power">11.1~12.6V</td><td>—</td><td>XT30；<b>严禁 4S</b></td></tr>
+    <tr><td>降压模块（12V→5V）</td><td class="c-power">IN = VM<br>OUT = 5V</td><td>—</td><td>输出 ≥400mA；<b>必须 5V，不是 4.7V</b></td></tr>
+    <tr><td>ME6211C33（3.3V LDO）</td><td class="c-power">IN = 5V<br>OUT = 3.3V</td><td>—</td><td>⚠ <b>严禁让它直吃 12.6V</b>（1.1W → 热保护），5V 那一级不能省</td></tr>
+  </tbody>
+</table>
+</div>
+
 <!-- ===== 灰度模块接口 ===== -->
 <div class="tb-section">
 <h3>🟢 灰度模块接口（<b>外购龙邱 8 路模拟量</b>，取代 v1.7 的 11P 自画子板排针）</h3>
