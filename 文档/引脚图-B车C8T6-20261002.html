@@ -105,7 +105,7 @@
   <tr><td class="pin">PB7</td><td class="sig c-comm">USART1_RX</td><td>IN</td><td class="c-sensor">✅ FT</td><td class="c-comm">USB-TTL TXD</td><td style="text-align:left">✅ PB7 是 FT；模块若有 3.3/5V 跳线选 3.3V</td></tr>
   <tr><td class="pin">PA13</td><td class="sig c-comm">SWDIO</td><td>—</td><td class="c-sensor">✅ FT</td><td class="c-comm">SWD 4P 座</td><td style="text-align:left" rowspan="2">★ <b>SWD 座必须留</b>（A 车吃过没座的亏），4P：3V3/SWDIO/SWCLK/GND</td></tr>
   <tr><td class="pin">PA14</td><td class="sig c-comm">SWCLK</td><td>—</td><td class="c-sensor">✅ FT</td><td class="c-comm">同上</td></tr>
-  <tr><td class="pin">PB10</td><td class="sig">BUZZER</td><td>OUT</td><td class="c-sensor">✅ FT</td><td>蜂鸣器（三极管驱动）</td><td style="text-align:left">上电自检发声：灰度黑/白极值不可分或遮光没做好，当场叫</td></tr>
+  <tr><td class="pin">PB10</td><td class="sig">BUZZER</td><td>OUT</td><td class="c-sensor">✅ FT</td><td><b>有源 5V 蜂鸣器</b>（Q1 低边驱动）</td><td style="text-align:left">上电自检发声：灰度黑/白极值不可分或遮光没做好，当场叫。<br>⚠ <b>有源 = 自带振荡 ⇒ 只能开/关，不能用 PWM 调音</b></td></tr>
   <tr><td class="pin">PB0</td><td class="sig">KEY1 / <b>测试开始</b></td><td>IN</td><td class="c-warn">❌ 非FT</td><td>轻触键 → GND</td><td style="text-align:left" rowspan="2">按键接 GND + 内部上拉，所以非 FT 也安全<br>★ <b>PC13 = 正式发车键</b>（读秒 → 运行）；<b>PB0 = 测试开始键</b>（进<b>测试模式</b>：电机 IN1=IN2=0 滑行+休眠、不循迹，等串口指令采数）</td></tr>
   <tr><td class="pin">PC13</td><td class="sig">KEY2 / <b>发车</b></td><td>IN</td><td class="c-warn">⚠ 弱驱动</td><td>轻触键 → GND</td><td style="text-align:left">PC13 灌电流仅 3mA → 只做输入，别驱动东西</td></tr>
   <tr><td class="pin">PC14<br>PC15<br>PA12</td><td class="sig">LED1<br>LED2<br>LED3</td><td>OUT</td><td class="c-sensor">✅</td><td>状态灯 ×3<br><b>串 470Ω</b></td><td style="text-align:left">★ 三个状态灯，指示：待机 / 读秒 / 运行 / 测试 / 急停。<b>470Ω</b> @3.3V ≈2.8mA<br>⚠ PC14/PC15 是<b>弱驱动脚</b>（输出速度上限 2MHz）→ 点 LED 没问题<br>板边另留 4 个测试盘：3.3V / VM / GND / 空闲 ADC —— 查"震动断电"救命用</td></tr>
@@ -114,7 +114,7 @@
   <tr><td class="pin">VM</td><td class="sig c-power">+12.6V 功率轨</td><td>—</td><td class="c-power">—</td><td class="c-power">XT30 → PTC → TVS → AT8236 VM</td><td style="text-align:left">电机/风机<b>直给 12V</b>，绝不允许走逻辑轨<br>★ <b>开关优先取消</b>（船型开关是插件件、朝下会刮/误动作）→ 用"发车时插 XT30"当总开关<br>★ 若拆板：<b>VM 与 AT8236 全留驱动板</b>，过板只走 5V+GND+PWM，<b>大电流不过连接器</b></td></tr>
   <tr><td class="pin">VIN</td><td class="sig c-power">+5V 中间轨</td><td>—</td><td class="c-power">—</td><td class="c-power">12V→<b>5V</b> 降压模块</td><td style="text-align:left"><b>v1.8：子板作废后这一轨只喂灰度模块</b>（≈170mA）+ LDO 输入（≈120）≈ <b>290mA</b> → 模块要能连续 <b>≥400mA</b>。<br>⚠ 仍买 <b>5V</b> 不买 4.7V（保守）；输入耐压覆盖 12.6V；输出并 220µF 降纹波（<b>纹波直进陀螺 → Z 零偏漂</b>）</td></tr>
   <tr><td class="pin">5V</td><td class="sig c-power">+5V → 灰度模块</td><td>—</td><td class="c-power">—</td><td class="c-power">模块 VCC</td><td style="text-align:left">★ <b>模块 VCC 接 5V</b>：宽压下发射管更亮 → 直接对冲"喷绘布对比度"这个头号风险；且不占 LDO。<b>代价是 8 路各一组分压（1k/1.5k + 100nF，共 16 只电阻 8 只电容）</b></td></tr>
-  <tr><td class="pin">3V3</td><td class="sig c-power">+3.3V</td><td>—</td><td class="c-power">—</td><td class="c-power">ME6211C33M5G-N ← <b>5V</b></td><td style="text-align:left">⚠ <b>严禁 RT9013</b>。预算：MCU/IMU/编码器/上拉/蜂鸣 ≈ <b>120mA</b> → ME6211C33 够（下单前核一眼 datasheet 的 Iout）；LDO 耗 (5−3.3)×0.12 = <b>0.2W</b> ✅<br>⚠ <b>严禁让 LDO 直吃 12.6V</b>（1.1W → 热保护），5V 那一级不能省</td></tr>
+  <tr><td class="pin">3V3</td><td class="sig c-power">+3.3V</td><td>—</td><td class="c-power">—</td><td class="c-power">ME6211C33M5G-N ← <b>5V</b></td><td style="text-align:left">⚠ <b>严禁 RT9013</b>。预算：MCU/IMU/编码器/上拉/LED ≈ <b>120mA</b> → ME6211C33 够（下单前核一眼 datasheet 的 Iout）；LDO 耗 (5−3.3)×0.12 = <b>0.2W</b> ✅<br>⚠ <b>严禁让 LDO 直吃 12.6V</b>（1.1W → 热保护），5V 那一级不能省</td></tr>
   <tr><td class="pin">GND</td><td class="sig c-power">星形单点地</td><td>—</td><td class="c-power">—</td><td class="c-power">功率地/逻辑地/灰度地 在输出电容负极汇一点</td><td style="text-align:left"><b>灰度模拟回线不穿功率区</b>；若拆板，过板地针 ≥3 根</td></tr>
   </tbody>
 </table>
@@ -129,7 +129,8 @@
     <tr><td><b>STM32F103C8T6</b></td><td class="c-power">3.3V</td><td class="c-power">3.3V</td><td>VDD_1/2/3 + VBAT 都接 3.3V；<b>VDDA 单独走 磁珠 + 1µF + 100nF</b></td></tr>
     <tr><td><b>逐飞 IMU660RC</b>（陀螺）</td><td class="c-power">3.3V</td><td class="c-power">3.3V</td><td>模块 3.3~5V 都行，给 3.3V 电平天然匹配</td></tr>
     <tr><td><b>逐飞迷你编码器 Pro ×2</b></td><td class="c-power">3.3V</td><td class="c-power">3.3V</td><td>输出跟随 VCC ⇒ 3.3V 直进 MCU，不用管 FT</td></tr>
-    <tr><td>蜂鸣器（有源）/ LED / 按键</td><td class="c-power">3.3V</td><td class="c-power">3.3V</td><td>按键接 GND + 内部上拉</td></tr>
+    <tr><td><b>LED ×3 / 按键 ×2</b></td><td class="c-power">3.3V</td><td class="c-power">3.3V</td><td>LED 串 470Ω；按键接 GND + 内部上拉</td></tr>
+    <tr><td><b>蜂鸣器（有源 5V，2.4kHz）</b></td><td class="c-warn">5V</td><td class="c-warn">控制 3.3V</td><td>PB10 → 1kΩ → SS8050 基极；集电极接蜂鸣器 −、+ 接 <b>5V</b>；D2 1N4148W 续流 + 10k 下拉。⚠ <b>有源 = 只开/关，不能 PWM 调音</b></td></tr>
     <tr><td colspan="4" class="section-title">5V 组 —— <b>只有灰度模块</b>（为了发射管更亮，见上节）</td></tr>
     <tr><td><b>灰度模块（龙邱 8 路）</b></td><td class="c-warn">5V</td><td class="c-warn">输出 5V ⇒ 要分压</td><td>★ 5V 下发射管更亮 → 对冲"喷绘布对比度"风险；代价：<b>A0~A7 共 8 组 1k/1.5k 分压 + 100nF</b>。<br>⚠ <b>别接 3.3V</b>（发射管变暗、白瞎余量）；<b>别接 12V/VM</b>（烧）</td></tr>
     <tr><td colspan="4" class="section-title">VM / 12.6V 组 —— 功率（电池直给，绝不走逻辑轨）</td></tr>
@@ -187,7 +188,7 @@
 <div class="note-box" style="background:#eaf2f8;border-left-color:#3498db">
 3S 锂电 11.1~12.6V（已有 2000mAh，63×18×15）→ <strong>XT30</strong> → PTC 自恢复保险 → TVS<br>
 ├─ <strong>功率轨 VM 12.6V</strong> → AT8236 ×2(+1预留) → 电机 / 风机　<span style="color:#c0392b">走线 ≥1.2mm@1oz、铺铜开窗加锡、就近 470µF/25V + 0.1µF×3、OUT→端子 100nF+磁珠、电机线 ≤10cm 双绞 18AWG</span><br>
-└─ <strong>逻辑轨</strong> → 12V→<strong>5V</strong> 降压模块（⚠ 不能是 4.7V）→ 一路给<b>灰度模块 VCC</b>（≈170mA，宽压下发射管更亮），另一路 → <b>ME6211C33M5G-N</b> → <strong>3.3V</strong> = MCU / IMU / 编码器 / 蜂鸣（≈120mA）<br>
+└─ <strong>逻辑轨</strong> → 12V→<strong>5V</strong> 降压模块（⚠ 不能是 4.7V）→ 一路给<b>灰度模块 VCC</b>（≈170mA）+ <b>有源蜂鸣器</b>（≈30mA，低边驱动），另一路 → <b>ME6211C33M5G-N</b> → <strong>3.3V</strong> = MCU / IMU / 编码器 / LED（≈120mA）<br>
 <span style="color:#c0392b">5V 预算：模块 ≈170 + LDO 输入 ≈120 ≈ <b>290mA</b> → 模块连续 <b>≥400mA</b>；3.3V ≈ 120mA（ME6211C33 够），LDO 耗 (5−3.3)×0.12 = 0.2W ✅</span><br>
 <br>
 ★ 严禁 4S。★ <b>严禁让 LDO 直吃 12.6V</b>（(12.6−3.3)×0.12 = 1.1W → SOT-223 热保护）—— 降压那一级必须有。★ 每颗 AT8236 必须设 3A 限流。<br>
