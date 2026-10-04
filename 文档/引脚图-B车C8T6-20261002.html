@@ -106,11 +106,9 @@
   <tr><td class="pin">PA13</td><td class="sig c-comm">SWDIO</td><td>—</td><td class="c-sensor">✅ FT</td><td class="c-comm">SWD 4P 座</td><td style="text-align:left" rowspan="2">★ <b>SWD 座必须留</b>（A 车吃过没座的亏），4P：3V3/SWDIO/SWCLK/GND</td></tr>
   <tr><td class="pin">PA14</td><td class="sig c-comm">SWCLK</td><td>—</td><td class="c-sensor">✅ FT</td><td class="c-comm">同上</td></tr>
   <tr><td class="pin">PB10</td><td class="sig">BUZZER</td><td>OUT</td><td class="c-sensor">✅ FT</td><td>蜂鸣器（三极管驱动）</td><td style="text-align:left">上电自检发声：灰度黑/白极值不可分或遮光没做好，当场叫</td></tr>
-  <tr><td class="pin">PB0</td><td class="sig">KEY1</td><td>IN</td><td class="c-warn">❌ 非FT</td><td>轻触键 → GND</td><td style="text-align:left" rowspan="2">按键接 GND + 内部上拉，所以非 FT 也安全</td></tr>
-  <tr><td class="pin">PC13</td><td class="sig">KEY2 / 发车</td><td>IN</td><td class="c-warn">⚠ 弱驱动</td><td>轻触键 → GND</td><td style="text-align:left">PC13 灌电流仅 3mA，只做输入</td></tr>
-  <tr><td class="pin">PC14</td><td class="sig">LED</td><td>OUT</td><td class="c-resv">—</td><td>状态灯 + 1kΩ</td><td style="text-align:left">同上，只点 LED 可以</td></tr>
-  <tr><td class="pin">PC15</td><td class="sig c-resv">预留</td><td>—</td><td class="c-resv">—</td><td class="c-resv">测试盘</td><td style="text-align:left">板边留 4 个测试盘：3.3V / VM / GND / 空闲 ADC —— 查"震动断电"救命用</td></tr>
-  <tr><td class="pin">PA12</td><td class="sig c-resv">预留(USB D-)</td><td>—</td><td class="c-sensor">✅ FT</td><td class="c-resv">空</td><td style="text-align:left">校赛阶段串口够用，别给自己加难度</td></tr>
+  <tr><td class="pin">PB0</td><td class="sig">KEY1 / <b>测试开始</b></td><td>IN</td><td class="c-warn">❌ 非FT</td><td>轻触键 → GND</td><td style="text-align:left" rowspan="2">按键接 GND + 内部上拉，所以非 FT 也安全<br>★ <b>PC13 = 正式发车键</b>（读秒 → 运行）；<b>PB0 = 测试开始键</b>（进<b>测试模式</b>：电机 IN1=IN2=0 滑行+休眠、不循迹，等串口指令采数）</td></tr>
+  <tr><td class="pin">PC13</td><td class="sig">KEY2 / <b>发车</b></td><td>IN</td><td class="c-warn">⚠ 弱驱动</td><td>轻触键 → GND</td><td style="text-align:left">PC13 灌电流仅 3mA → 只做输入，别驱动东西</td></tr>
+  <tr><td class="pin">PC14<br>PC15<br>PA12</td><td class="sig">LED1<br>LED2<br>LED3</td><td>OUT</td><td class="c-sensor">✅</td><td>状态灯 ×3<br><b>串 470Ω</b></td><td style="text-align:left">★ 三个状态灯，指示：待机 / 读秒 / 运行 / 测试 / 急停。<b>470Ω</b> @3.3V ≈2.8mA<br>⚠ PC14/PC15 是<b>弱驱动脚</b>（输出速度上限 2MHz）→ 点 LED 没问题<br>板边另留 4 个测试盘：3.3V / VM / GND / 空闲 ADC —— 查"震动断电"救命用</td></tr>
 
   <tr><td colspan="6" class="section-title">⑥ 电源与地</td></tr>
   <tr><td class="pin">VM</td><td class="sig c-power">+12.6V 功率轨</td><td>—</td><td class="c-power">—</td><td class="c-power">XT30 → PTC → TVS → AT8236 VM</td><td style="text-align:left">电机/风机<b>直给 12V</b>，绝不允许走逻辑轨<br>★ <b>开关优先取消</b>（船型开关是插件件、朝下会刮/误动作）→ 用"发车时插 XT30"当总开关<br>★ 若拆板：<b>VM 与 AT8236 全留驱动板</b>，过板只走 5V+GND+PWM，<b>大电流不过连接器</b></td></tr>
