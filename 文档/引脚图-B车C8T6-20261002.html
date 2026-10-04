@@ -78,6 +78,15 @@
   <tr><td class="pin">PB2</td><td class="sig c-resv">FAN_IN2（预留）</td><td>OUT</td><td class="c-resv">—</td><td class="c-resv">同上</td></tr>
 
   <tr><td colspan="6" class="section-title">③ 编码器 —— 逐飞迷你编码器 Pro · 1024 P/R · 正交 A/B · <b>⚠ v1.8 更正：是"齿轮驱动"不是在轮轴</b></td></tr>
+  <tr><td colspan="6" style="text-align:left;background:#eafaf1;border-left:4px solid #27ae60;line-height:1.9">
+    ★ <b>编码器那头是 6P 插座（本体丝印 1~6）</b>：<span class="sig">1 = GND　2 = VCC　3 = LSB(A相)　4 = DIR　5 = Z相　6 = B相</span><br>
+    ⇒ <b>我们用「正交模式」，只接 4 根</b>：<b>A相(3) + B相(6)</b>；<b>DIR(4) 与 Z相(5) 悬空不用</b>（DIR 是"脉冲+方向"模式下的方向线；Z 是每圈一个的索引脉冲，以后做绝对里程再用）<br>
+    <b>一根一根接（左右各一个 6P 座）</b>：<br>
+    　<b>左编码器</b>：1→GND　│　2→<b>3.3V</b>　│　3→<b>PA15</b>（TIM2_CH1）　│　4→空　│　5→空（可留焊盘）　│　6→<b>PB3</b>（TIM2_CH2）<br>
+    　<b>右编码器</b>：1→GND　│　2→<b>3.3V</b>　│　3→<b>PB4</b>（TIM3_CH1）　│　4→空　│　5→空（可留焊盘）　│　6→<b>PB5</b>（TIM3_CH2）<br>
+    ⚠ 供电 <b>3.3V</b>（输出电平跟随 VCC ✓ 直进 MCU）；⚠ <b>1 脚(GND)/2 脚(VCC) 别接反</b>（烧编码器）→ 用<b>带防呆扣</b>的 6P 座<br>
+    ⚠ <b>针距要量实物</b>（1.0 / 1.25 / 1.5mm 都可能）—— 量相邻两针中心距，再选同系列卧贴座
+  </td></tr>
   <tr><td class="pin">PA15</td><td class="sig c-sensor">L_ENC_A</td><td>IN</td><td class="c-sensor">✅ FT</td><td class="c-sensor">左编码器 A</td><td style="text-align:left" rowspan="4">TIM2 部分重映射 CH1/CH2 + TIM3 部分重映射 CH1/CH2，硬件正交计数、不开中断<br>⚠ <b>PA15/PB3/PB4 默认是 JTAG 脚</b> → 固件第一件事禁 JTAG 保留 SWD：<span class="sig">AFIO-&gt;MAPR |= (2u&lt;&lt;24)</span><br>✅ 这 4 个脚都是 FT<br><b>★ v1.8 更正</b>：编码器<b>带 5mm 齿轮</b> ⇒ 齿轮驱动 ⇒ v1.7 的 <span class="sig">mm/count = πD/4096</span> <b>作废</b>（那式子只对"装轮轴"成立）<br>★ <b>改"推车 1m 标定"为主</b>：<span class="sig">mm/count = 1000 / 推1m的计数</span> → k 与 D 都不必知道<br>★ 量级：若编码器 5mm 齿咬轮上 22mm 齿 → k=4.4 → 每轮转 18022 count、<b>1.2m/s 时 299kHz</b> → <b>要实测确认 TIM 接口吃得下，&gt;200kHz 就得换方案</b><br>⚠ 打滑时里程虚高 → 圆环/终点判据必须叠陀螺角度积分兜底</td></tr>
   <tr><td class="pin">PB3</td><td class="sig c-sensor">L_ENC_B</td><td>IN</td><td class="c-sensor">✅ FT</td><td class="c-sensor">左编码器 B</td></tr>
   <tr><td class="pin">PB4</td><td class="sig c-sensor">R_ENC_A</td><td>IN</td><td class="c-sensor">✅ FT</td><td class="c-sensor">右编码器 A</td></tr>
