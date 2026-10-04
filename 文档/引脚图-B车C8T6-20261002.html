@@ -59,12 +59,15 @@
   </thead>
   <tbody>
 
-  <tr><td colspan="6" class="section-title">① 灰度 —— 外购龙邱 8 路<b>模拟量</b>模块（地址选通式：<b>1 ADC + 3 GPIO</b>）</td></tr>
-  <tr><td class="pin">PA0</td><td class="sig c-sensor">AD0</td><td>OUT</td><td class="c-warn">❌ 非FT</td><td class="c-sensor">模块 AD0</td><td style="text-align:left" rowspan="4">★ <b>AD0/AD1/AD2 放在 PA0~PA2 = 同一端口连续 3 位</b> → 一次 <span class="sig">GPIOA-&gt;BSRR</span> 写就切通道，切换开销最小<br>★ <b>模拟量进 PA3 = ADC1_IN3</b>。⚠ <b>模块供 5V ⇒ AO 是 5V 电平 ⇒ 必须分压</b>：<span class="sig">AO ── 1k ──┬── PA3 ; 1.5k ── GND ; 100nF ── GND</span>（5V→3.0V；源阻抗 600Ω，ADC 够用）。<b>AD0~AD2 是 MCU 输出的控制线，直连、不分压</b><br>★ 判据：<b>每通道归一化后加权</b> <span class="sig">p=(v-v_black)/(v_white-v_black)</span> → <span class="sig">err=Σ(w·p)/Σp</span>，<b>不再用整口读 0/1</b><br>★ 轮询预算：每通道 50µs → 8 通道 <b>400µs</b> → 1.2m/s 走 0.48mm（占 11mm 档 4.4%）✅ 前提是 <b>settling ≤20µs</b></td></tr>
-  <tr><td class="pin">PA1</td><td class="sig c-sensor">AD1</td><td>OUT</td><td class="c-warn">❌ 非FT</td><td class="c-sensor">模块 AD1</td></tr>
-  <tr><td class="pin">PA2</td><td class="sig c-sensor">AD2</td><td>OUT</td><td class="c-warn">❌ 非FT</td><td class="c-sensor">模块 AD2</td></tr>
-  <tr><td class="pin">PA3</td><td class="sig c-sensor">AO（模拟量）</td><td>IN</td><td class="c-warn">❌ 非FT</td><td class="c-sensor">模块 OUT/AO</td></tr>
-  <tr><td class="pin">PA4~PA7</td><td class="sig c-resv">空闲</td><td>—</td><td class="c-warn">❌ 非FT</td><td class="c-resv">预留（模拟抽头/扩展）</td><td style="text-align:left">四条全空出来了 —— 但如果模块档距与"≤88mm 横向"冲突，这几位可另作它用</td></tr>
+  <tr><td colspan="6" class="section-title">① 灰度 —— 外购龙邱 8 路<b>模拟量</b>模块 · <b>★用「并出」：A0~A7 → PA0~PA7（8 路 ADC + 扫描/DMA）</b></td></tr>
+  <tr><td class="pin">PA0</td><td class="sig c-sensor">A0（ADC1_IN0）</td><td>IN</td><td class="c-warn">❌ 非FT</td><td class="c-sensor">模块 A0</td><td style="text-align:left" rowspan="8">★ <b>「并出」= 8 路模拟同时输出</b> → <b>8 根全进 ADC（PA0~PA7 = ADC1_IN0~IN7）</b>，用 <b>ADC 扫描 + DMA</b> 一次搬 8 个值<br>★ <b>采样 ≈10µs</b>（8 次 12bit 转换）→ 1.2m/s 只走 <b>0.01mm</b>；<b>通道间零偏斜</b>（同时采）★★ —— 比"串出"快约 40 倍，且 <b>settling / 位图失真这些问题一并消失</b><br>⚠ <b>模块供 5V ⇒ 每路输出是 5V 电平 ⇒ 8 路各要一组分压</b>：<span class="sig">Ax ── 1k ──┬── PAx ; 1.5k ── GND ; 100nF ── GND</span>（5V→3.0V；源阻抗 600Ω）→ <b>1k×8 + 1.5k×8 = 16 只</b><br>★ 判据：<b>每通道归一化后加权</b> <span class="sig">p=(v-v_black)/(v_white-v_black)</span> → <span class="sig">err=Σ(w·p)/Σp</span><br>⚠ 模块另一头的「串出」6 针（1ADC+3GPIO 选通式）**别用**：400µs、有通道间偏斜 —— 那是引脚紧张时才用的下策</td></tr>
+  <tr><td class="pin">PA1</td><td class="sig c-sensor">A1（ADC1_IN1）</td><td>IN</td><td class="c-warn">❌ 非FT</td><td class="c-sensor">模块 A1</td></tr>
+  <tr><td class="pin">PA2</td><td class="sig c-sensor">A2（ADC1_IN2）</td><td>IN</td><td class="c-warn">❌ 非FT</td><td class="c-sensor">模块 A2</td></tr>
+  <tr><td class="pin">PA3</td><td class="sig c-sensor">A3（ADC1_IN3）</td><td>IN</td><td class="c-warn">❌ 非FT</td><td class="c-sensor">模块 A3</td></tr>
+  <tr><td class="pin">PA4</td><td class="sig c-sensor">A4（ADC1_IN4）</td><td>IN</td><td class="c-warn">❌ 非FT</td><td class="c-sensor">模块 A4</td></tr>
+  <tr><td class="pin">PA5</td><td class="sig c-sensor">A5（ADC1_IN5）</td><td>IN</td><td class="c-warn">❌ 非FT</td><td class="c-sensor">模块 A5</td></tr>
+  <tr><td class="pin">PA6</td><td class="sig c-sensor">A6（ADC1_IN6）</td><td>IN</td><td class="c-warn">❌ 非FT</td><td class="c-sensor">模块 A6</td></tr>
+  <tr><td class="pin">PA7</td><td class="sig c-sensor">A7（ADC1_IN7）</td><td>IN</td><td class="c-warn">❌ 非FT</td><td class="c-sensor">模块 A7</td></tr>
 
   <tr><td colspan="6" class="section-title">② 电机驱动 —— AT8236 单通道 H 桥 ×2（第 3 颗留焊盘给负压）</td></tr>
   <tr><td class="pin">PA8</td><td class="sig c-motor">L_IN1</td><td>OUT</td><td class="c-sensor">✅ FT</td><td class="c-motor">AT8236#1 IN1</td><td style="text-align:left" rowspan="4">TIM1_CH1~CH4 四路独立 PWM（<b>20kHz</b>）<br>⚠ <b>TIM1 必须开 MOE</b>：<span class="sig">__HAL_TIM_MOE_ENABLE(&amp;htim1)</span><br>忘了 = 程序在跑、电机不转（能白耗半天）<br>⚠ 每颗 AT8236 的 <b>ISEN 采样电阻按手册把限流算到 3A</b>（N30 堵转标称 &lt;15A，超芯片 6A 峰值）</td></tr>
@@ -103,7 +106,7 @@
   <tr><td colspan="6" class="section-title">⑥ 电源与地</td></tr>
   <tr><td class="pin">VM</td><td class="sig c-power">+12.6V 功率轨</td><td>—</td><td class="c-power">—</td><td class="c-power">XT30 → PTC → TVS → AT8236 VM</td><td style="text-align:left">电机/风机<b>直给 12V</b>，绝不允许走逻辑轨<br>★ <b>开关优先取消</b>（船型开关是插件件、朝下会刮/误动作）→ 用"发车时插 XT30"当总开关<br>★ 若拆板：<b>VM 与 AT8236 全留驱动板</b>，过板只走 5V+GND+PWM，<b>大电流不过连接器</b></td></tr>
   <tr><td class="pin">VIN</td><td class="sig c-power">+5V 中间轨</td><td>—</td><td class="c-power">—</td><td class="c-power">12V→<b>5V</b> 降压模块</td><td style="text-align:left"><b>v1.8：子板作废后这一轨只喂灰度模块</b>（≈170mA）+ LDO 输入（≈120）≈ <b>290mA</b> → 模块要能连续 <b>≥400mA</b>。<br>⚠ 仍买 <b>5V</b> 不买 4.7V（保守）；输入耐压覆盖 12.6V；输出并 220µF 降纹波（<b>纹波直进陀螺 → Z 零偏漂</b>）</td></tr>
-  <tr><td class="pin">5V</td><td class="sig c-power">+5V → 灰度模块</td><td>—</td><td class="c-power">—</td><td class="c-power">模块 VCC</td><td style="text-align:left">★ <b>模块 VCC 接 5V</b>：宽压下发射管更亮 → 直接对冲"喷绘布对比度"这个头号风险；且不占 LDO。<b>代价只有 AO 一路分压</b></td></tr>
+  <tr><td class="pin">5V</td><td class="sig c-power">+5V → 灰度模块</td><td>—</td><td class="c-power">—</td><td class="c-power">模块 VCC</td><td style="text-align:left">★ <b>模块 VCC 接 5V</b>：宽压下发射管更亮 → 直接对冲"喷绘布对比度"这个头号风险；且不占 LDO。<b>代价是 8 路各一组分压（1k/1.5k + 100nF，共 16 只电阻 8 只电容）</b></td></tr>
   <tr><td class="pin">3V3</td><td class="sig c-power">+3.3V</td><td>—</td><td class="c-power">—</td><td class="c-power">ME6211C33M5G-N ← <b>5V</b></td><td style="text-align:left">⚠ <b>严禁 RT9013</b>。预算：MCU/IMU/编码器/上拉/蜂鸣 ≈ <b>120mA</b> → ME6211C33 够（下单前核一眼 datasheet 的 Iout）；LDO 耗 (5−3.3)×0.12 = <b>0.2W</b> ✅<br>⚠ <b>严禁让 LDO 直吃 12.6V</b>（1.1W → 热保护），5V 那一级不能省</td></tr>
   <tr><td class="pin">GND</td><td class="sig c-power">星形单点地</td><td>—</td><td class="c-power">—</td><td class="c-power">功率地/逻辑地/灰度地 在输出电容负极汇一点</td><td style="text-align:left"><b>灰度模拟回线不穿功率区</b>；若拆板，过板地针 ≥3 根</td></tr>
   </tbody>
@@ -115,16 +118,13 @@
 <table>
   <thead><tr><th>主板侧</th><th>模块侧（丝印）</th><th>说明</th></tr></thead>
   <tbody>
-    <tr><td class="c-sensor">PA0</td><td class="c-sensor">AD0</td><td>地址位 0（同口连续 3 位 → 一次 BSRR 切通道）</td></tr>
-    <tr><td class="c-sensor">PA1</td><td class="c-sensor">AD1</td><td>地址位 1</td></tr>
-    <tr><td class="c-sensor">PA2</td><td class="c-sensor">AD2</td><td>地址位 2（8 通道选通）</td></tr>
-    <tr><td class="c-sensor">PA3 / ADC1_IN3</td><td class="c-sensor">OUT / AO</td><td>模拟量输出 → 12bit ADC</td></tr>
-    <tr><td class="c-power">5V</td><td class="c-power">VCC</td><td><b>供 5V</b>（发射管更亮，不占 LDO）→ <b>AO 需 1k/1.5k 分压</b>进 PA3</td></tr>
+    <tr><td class="c-sensor">PA0~PA7</td><td class="c-sensor">A0~A7</td><td><b>「并出」：8 路模拟同时输出</b> → ADC1_IN0~IN7（<b>扫描 + DMA</b>）。每路先经 <b>1k/1.5k 分压 + 100nF</b></td></tr>
+    <tr><td class="c-power">5V</td><td class="c-power">3.5V / VCC</td><td><b>供 5V</b>（发射管更亮，不占 LDO）⇒ 8 路输出都是 5V 电平 ⇒ <b>8 组都要分压</b>（供 3.3V 可免，但发射管暗）</td></tr>
     <tr><td class="c-power">GND</td><td class="c-power">GND</td><td>与主板共地（模拟回线不穿功率区）</td></tr>
   </tbody>
 </table>
 <div class="note-box">
-  <b>★ 接口共 6 根</b>（AD0/AD1/AD2/AO/3V3/GND）。⚠ <b>模块侧的连接器型号与针序以实物为准</b>（不同厂家用 XH2.54 / GH1.25 / 排针不等）——<b>拿到实物先对针序再画封装</b>。<br>
+  <b>★ 接口共 10 根</b>（并出：`3.5V` / `GND` / `A0`~`A7`）。⚠ <b>模块侧的连接器型号与针序以实物为准</b>（XH2.54 / GH1.25 / 排针不等）——<b>拿到实物先对针序再画封装</b>。<br>
   <b>★ 买前问客服 8 条 + 验收阈值</b>（框架定稿 §2.4）：<br>
   　路数 / 档距（要板框图与档距标尺）/ <b>最小检测高度（≤6mm 才通过）</b> / 输出电平 / 波长 / <b>地址切换 settling（≤20µs 才通过，≥500µs 直接否）</b> / 板框尺寸 / 供电范围与总电流<br>
   <b>★ 拿到实物必做三件事</b>：① 量<b>安装耳平面→探头面</b>的高度（倒推分层高度）；② <b>喷绘布黑白对比度实测</b>（最高优先级，布是白 PVC + 黑墨，940nm 可能穿透）；③ 上电自检：黑底应全 0、跨白线应满量程，不对就蜂鸣。<br>
