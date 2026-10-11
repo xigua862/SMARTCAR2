@@ -41,3 +41,10 @@ Desktop.ini
 
 # ===== 内层嵌套仓库的 .git（已禁用，内容当普通文件管）=====
 **/.git.disabled/
+
+# ===== Node 依赖（脚本 gen-silkscreen-badge.js 用，体积大不进 git）=====
+node_modules/
+
+# ===== Python 缓存 =====
+__pycache__/
+*.pyc
