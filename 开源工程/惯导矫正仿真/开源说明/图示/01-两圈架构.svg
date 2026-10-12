@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 340" font-family="Microsoft YaHei, SimHei, PingFang SC, sans-serif">
+<rect width="920" height="340" fill="#fafbfc"/>
+<text x="460" y="32" text-anchor="middle" font-size="18" font-weight="700" fill="#1a2330">第一圈把走过的点记下来，后面按这张表跑</text>
+
+<rect x="40" y="58" width="390" height="250" rx="10" fill="#fff" stroke="#d7dee6"/>
+<text x="235" y="86" text-anchor="middle" font-size="16" font-weight="700" fill="#2a6f4e">建图圈 · 贴线 + 记账</text>
+<path d="M90 240 L90 140 L200 140 L200 200 L310 200 L310 120 L390 120" fill="none" stroke="#c9a227" stroke-width="4"/>
+<g fill="#1f6f78">
+  <circle cx="90" cy="240" r="5"/><circle cx="90" cy="190" r="5"/>
+  <circle cx="90" cy="140" r="5"/><circle cx="145" cy="140" r="5"/>
+  <circle cx="200" cy="140" r="5"/><circle cx="200" cy="170" r="5"/>
+  <circle cx="200" cy="200" r="5"/><circle cx="255" cy="200" r="5"/>
+  <circle cx="310" cy="200" r="5"/><circle cx="310" cy="160" r="5"/>
+  <circle cx="310" cy="120" r="5"/><circle cx="350" cy="120" r="5"/>
+</g>
+<text x="102" y="252" font-size="12" fill="#556">(0, 0) 起点</text>
+<text x="235" y="278" text-anchor="middle" font-size="13" fill="#334">每走一小段，记下当前惯导坐标</text>
+<text x="235" y="298" text-anchor="middle" font-size="12" fill="#667">得到 pts[0], pts[1], pts[2] …</text>
+<polygon points="450,180 478,168 478,192" fill="#3d8fd1"/>
+<rect x="500" y="58" width="390" height="250" rx="10" fill="#fff" stroke="#d7dee6"/>
+<text x="695" y="86" text-anchor="middle" font-size="16" font-weight="700" fill="#1f6f78">正式跑 · 跟表</text>
+<path d="M550 240 L550 140 L660 140 L660 200 L770 200 L770 120 L850 120" fill="none" stroke="#2aa89a" stroke-width="4" stroke-dasharray="7 4"/>
+<path d="M562 248 L555 155 L668 128 L675 208 L778 188 L790 128 L848 128" fill="none" stroke="#e07a3d" stroke-width="2.4"/>
+<circle cx="660" cy="140" r="6" fill="#2aa89a"/>
+<rect x="644" y="154" width="24" height="14" rx="2" fill="#ffb347" stroke="#8a5a20" transform="rotate(-14 656 161)"/>
+<text x="695" y="278" text-anchor="middle" font-size="13" fill="#334">转向看惯导点在路表左边还是右边</text>
+<text x="695" y="298" text-anchor="middle" font-size="12" fill="#667">惯导歪了，真车就会被打下线</text>
+</svg>

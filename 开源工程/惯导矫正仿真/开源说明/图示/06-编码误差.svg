@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 380" font-family="Microsoft YaHei, SimHei, PingFang SC, sans-serif">
+<rect width="920" height="380" fill="#fafbfc"/>
+<text x="460" y="32" text-anchor="middle" font-size="18" font-weight="700" fill="#1a2330">尺子长了：方向可能还对，进度条超前了</text>
+
+<line x1="70" y1="150" x2="850" y2="150" stroke="#2aa89a" stroke-width="6"/>
+<g fill="#1f6f78" font-size="12">
+  <circle cx="70" cy="150" r="6"/><text x="70" y="128" text-anchor="middle">0</text>
+  <circle cx="200" cy="150" r="6"/><text x="200" y="128" text-anchor="middle">1</text>
+  <circle cx="330" cy="150" r="6"/><text x="330" y="128" text-anchor="middle">2</text>
+  <circle cx="460" cy="150" r="6"/><text x="460" y="128" text-anchor="middle">3</text>
+  <circle cx="590" cy="150" r="6"/><text x="590" y="128" text-anchor="middle">4</text>
+  <circle cx="720" cy="150" r="6"/><text x="720" y="128" text-anchor="middle">5</text>
+  <circle cx="850" cy="150" r="6"/><text x="850" y="128" text-anchor="middle">6 弯</text>
+</g>
+<rect x="444" y="168" width="28" height="16" rx="3" fill="#ffb347" stroke="#8a5a20"/>
+<text x="458" y="210" text-anchor="middle" font-size="13" fill="#b45a18">车实际在 pts[3]</text>
+<text x="720" y="210" text-anchor="middle" font-size="13" fill="#1a4f8a">编码器却报到 pts[5]</text>
+<path d="M458 184 L458 230" stroke="#b45a18" stroke-width="1.6"/>
+<path d="M720 156 L720 230" stroke="#1a4f8a" stroke-width="1.6"/>
+<path d="M458 240 H720" stroke="#1a2330" stroke-width="1.6"/>
+<text x="589" y="262" text-anchor="middle" font-size="14" fill="#1a2330">超前了两格：提前按弯减速、提前打方向</text>
+<rect x="70" y="290" width="780" height="64" rx="8" fill="#fff" stroke="#d7dee6"/>
+<text x="90" y="318" font-size="14" fill="#1a2330">打滑、内外轮差会把编码器积长或积短。这和 yaw 是两回事。</text>
+<text x="90" y="340" font-size="13" fill="#556">yaw 管下一步往哪走；编码器管表上取第几个点。两个都可能错。</text>
+</svg>

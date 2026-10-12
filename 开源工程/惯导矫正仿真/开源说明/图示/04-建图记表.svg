@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 480" font-family="Microsoft YaHei, SimHei, PingFang SC, sans-serif">
+<rect width="960" height="480" fill="#fafbfc"/>
+<text x="480" y="32" text-anchor="middle" font-size="18" font-weight="700" fill="#1a2330">建图：把积出来的点塞进数组，这就是路表</text>
+
+<path d="M70 400 L70 280 L70 160 L190 160 L310 160" fill="none" stroke="#c9a227" stroke-width="4"/>
+<g fill="#1f6f78" font-size="12">
+  <circle cx="70" cy="400" r="7"/><text x="82" y="416" fill="#334">0</text>
+  <circle cx="70" cy="340" r="7"/><text x="82" y="336" fill="#1f6f78">1</text>
+  <circle cx="70" cy="280" r="7"/><text x="82" y="276" fill="#1f6f78">2</text>
+  <circle cx="70" cy="220" r="7"/><text x="82" y="216" fill="#1f6f78">3</text>
+  <circle cx="70" cy="160" r="7"/><text x="82" y="156" fill="#1f6f78">4</text>
+  <circle cx="130" cy="160" r="7"/><text x="122" y="146" fill="#1f6f78">5</text>
+  <circle cx="190" cy="160" r="7"/><text x="182" y="146" fill="#1f6f78">6</text>
+  <circle cx="250" cy="160" r="7"/><text x="242" y="146" fill="#1f6f78">7</text>
+  <circle cx="310" cy="160" r="7"/><text x="302" y="146" fill="#1f6f78">8</text>
+</g>
+<text x="70" y="444" text-anchor="middle" font-size="13" fill="#556">赛道上实际开过的位置</text>
+<rect x="400" y="70" width="520" height="360" rx="10" fill="#fff" stroke="#d7dee6"/>
+<text x="420" y="102" font-size="15" font-weight="700" fill="#1a2330">MCU 里就是这样一张表</text>
+<text x="420" y="140" font-family="Consolas, Microsoft YaHei, monospace" font-size="15" fill="#1a2330">pts[0] = ( 0.0,  0.0)    走过  0 mm</text>
+<text x="420" y="168" font-family="Consolas, Microsoft YaHei, monospace" font-size="15" fill="#1a2330">pts[1] = ( 0.0,  2.0)    走过  2 mm</text>
+<text x="420" y="196" font-family="Consolas, Microsoft YaHei, monospace" font-size="15" fill="#1a2330">pts[2] = ( 0.0,  4.0)    走过  4 mm</text>
+<text x="420" y="224" font-family="Consolas, Microsoft YaHei, monospace" font-size="15" fill="#1a2330">pts[3] = ( 0.0,  6.0)    走过  6 mm</text>
+<text x="420" y="252" font-family="Consolas, Microsoft YaHei, monospace" font-size="15" fill="#1a2330">pts[4] = ( 0.0,  8.0)    走过  8 mm</text>
+<text x="420" y="280" font-family="Consolas, Microsoft YaHei, monospace" font-size="15" fill="#1a2330">pts[5] = ( 2.0,  8.0)    走过 10 mm</text>
+<text x="420" y="308" font-family="Consolas, Microsoft YaHei, monospace" font-size="15" fill="#1a2330">pts[6] = ( 4.0,  8.0)    …</text>
+<text x="420" y="350" font-size="14" fill="#1f6f78">序号 i 和路程锁死：走了 10 mm 就用 pts[5]</text>
+<text x="420" y="378" font-size="13" fill="#556">正式跑用编码器读数当进度条，不要搜最近点。</text>
+<text x="420" y="404" font-size="13" fill="#556">过起点搜最近会跳到别的点上去。</text>
+</svg>

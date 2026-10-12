@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 520" font-family="Microsoft YaHei, SimHei, PingFang SC, sans-serif">
+<rect width="960" height="520" fill="#fafbfc"/>
+<text x="480" y="32" text-anchor="middle" font-size="18" font-weight="700" fill="#1a2330">改 yaw 不改现在的点，只改下一步落在哪</text>
+<defs>
+  <marker id="arr" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto">
+    <path d="M0,0 L8,4 L0,8 Z" fill="#1a2330"/>
+  </marker>
+  <marker id="arrG" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto">
+    <path d="M0,0 L8,4 L0,8 Z" fill="#2a6f4e"/>
+  </marker>
+  <marker id="arrB" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto">
+    <path d="M0,0 L8,4 L0,8 Z" fill="#2a6aa8"/>
+  </marker>
+  <marker id="arrO" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto">
+    <path d="M0,0 L8,4 L0,8 Z" fill="#b45a18"/>
+  </marker>
+</defs>
+
+<line x1="70" y1="80" x2="70" y2="300" stroke="#c9a227" stroke-width="8"/>
+<text x="84" y="96" font-size="13" fill="#8a7010">路表 x = 0</text>
+<circle cx="70" cy="280" r="5" fill="#bbb"/>
+<circle cx="130" cy="220" r="9" fill="#2aa89a"/>
+<text x="144" y="216" font-size="14" fill="#1f6f78">现在的惯导点 (x, y)</text>
+<text x="144" y="236" font-size="13" fill="#1f6f78">已经积在这，不会被瞬移走</text>
+<line x1="130" y1="220" x2="175" y2="100" stroke="#999" stroke-width="2.4" stroke-dasharray="6 4" marker-end="url(#arr)"/>
+<text x="184" y="110" font-size="13" fill="#666">不修 yaw：下一步更偏左</text>
+<line x1="130" y1="220" x2="88" y2="100" stroke="#2a6f4e" stroke-width="2.8" marker-end="url(#arrG)"/>
+<text x="20" y="118" font-size="13" fill="#2a6f4e">拧回一点：下一步往路表靠</text>
+<circle cx="88" cy="100" r="7" fill="#2a6f4e"/>
+<circle cx="175" cy="100" r="6" fill="#999"/>
+<rect x="430" y="70" width="500" height="240" rx="10" fill="#fff" stroke="#d7dee6"/>
+<text x="450" y="104" font-size="15" font-weight="700" fill="#1a2330">下一步永远是这句话</text>
+<text x="450" y="140" font-family="Consolas, Microsoft YaHei, monospace" font-size="16" fill="#1a2330">x += ds × cos(yaw)</text>
+<text x="450" y="168" font-family="Consolas, Microsoft YaHei, monospace" font-size="16" fill="#1a2330">y += ds × sin(yaw)</text>
+<text x="450" y="208" font-size="14" fill="#334">补偿加在 yaw 上 → cos/sin 变了</text>
+<text x="450" y="236" font-size="14" fill="#334">→ 这一步的 Δx、Δy 变了</text>
+<text x="450" y="264" font-size="14" fill="#334">→ 新的 (x, y) 落点变了</text>
+<text x="450" y="292" font-size="13" fill="#b45a18">走一段直道，点才慢慢走回路表。</text>
+<rect x="70" y="340" width="860" height="150" rx="10" fill="#fff8ee" stroke="#e7c9a4"/>
+<text x="90" y="372" font-size="15" font-weight="700" fill="#1a2330">和打舵是两件事</text>
+<text x="90" y="404" font-size="14" fill="#334">跟表环看见惯导点在路表左边 → 打右舵 → 真车也往右。</text>
+<text x="90" y="430" font-size="14" fill="#334">若真车其实已经在线上、只是惯导点偏左，这一打，真车就被打下线。</text>
+<text x="90" y="456" font-size="14" fill="#334">所以先拧 yaw，让惯导点自己走回真位置。跟表打的舵才是给真车用的。</text>
+</svg>

@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 500" font-family="Microsoft YaHei, SimHei, PingFang SC, sans-serif">
+<rect width="960" height="500" fill="#fafbfc"/>
+<text x="480" y="32" text-anchor="middle" font-size="18" font-weight="700" fill="#1a2330">举例：从 (0,0) 朝上走出前几个点</text>
+<defs>
+  <marker id="arr" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto">
+    <path d="M0,0 L8,4 L0,8 Z" fill="#1a2330"/>
+  </marker>
+  <marker id="arrG" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto">
+    <path d="M0,0 L8,4 L0,8 Z" fill="#2a6f4e"/>
+  </marker>
+  <marker id="arrB" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto">
+    <path d="M0,0 L8,4 L0,8 Z" fill="#2a6aa8"/>
+  </marker>
+  <marker id="arrO" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto">
+    <path d="M0,0 L8,4 L0,8 Z" fill="#b45a18"/>
+  </marker>
+</defs>
+
+<g transform="translate(70,430)">
+  <line x1="0" y1="0" x2="280" y2="0" stroke="#889" stroke-width="1.4" marker-end="url(#arr)"/>
+  <line x1="0" y1="0" x2="0" y2="-360" stroke="#889" stroke-width="1.4" marker-end="url(#arr)"/>
+  <text x="286" y="6" font-size="13" fill="#556">X (mm)</text>
+  <text x="-8" y="-368" text-anchor="end" font-size="13" fill="#556">Y (mm)</text>
+  <path d="M0 0 L0 -80 L0 -160 L0 -240 L80 -240 L160 -240" fill="none" stroke="#c9a227" stroke-width="3"/>
+  <g fill="#1f6f78" font-size="12">
+    <circle cx="0" cy="0" r="6"/><text x="10" y="16" fill="#334">(0, 0) 起点</text>
+    <circle cx="0" cy="-80" r="6"/><text x="12" y="-74" fill="#1f6f78">(0, 2)</text>
+    <circle cx="0" cy="-160" r="6"/><text x="12" y="-154" fill="#1f6f78">(0, 4)</text>
+    <circle cx="0" cy="-240" r="6"/><text x="12" y="-248" fill="#1f6f78">(0, 6)</text>
+    <circle cx="80" cy="-240" r="6"/><text x="70" y="-252" text-anchor="end" fill="#1f6f78">(2, 6)</text>
+    <circle cx="160" cy="-240" r="6"/><text x="150" y="-252" text-anchor="end" fill="#1f6f78">(4, 6)</text>
+  </g>
+  <text x="16" y="-40" font-size="12" fill="#b45a18">yaw=90°</text>
+  <text x="90" y="-220" font-size="12" fill="#b45a18">yaw=0° 右转</text>
+</g>
+<rect x="430" y="70" width="500" height="390" rx="10" fill="#fff" stroke="#d7dee6"/>
+<text x="450" y="102" font-size="15" font-weight="700" fill="#1a2330">这一小段编码器报：走了 2 mm</text>
+<text x="450" y="128" font-size="15" font-weight="700" fill="#1a2330">陀螺报：航向 90°（朝上）</text>
+<text x="450" y="168" font-size="14" fill="#334">x = 0 + 2 × cos(90°) = 0</text>
+<text x="450" y="194" font-size="14" fill="#334">y = 0 + 2 × sin(90°) = 2</text>
+<text x="450" y="230" font-size="14" fill="#1f6f78">得到第一个点 (0, 2)</text>
+<text x="450" y="266" font-size="14" fill="#334">再走 2 mm，还是朝上 → (0, 4)</text>
+<text x="450" y="292" font-size="14" fill="#334">再走 2 mm → (0, 6)</text>
+<text x="450" y="328" font-size="14" fill="#334">右转后 yaw=0°，cos(0°)=1</text>
+<text x="450" y="354" font-size="14" fill="#334">x 开始增加：(2, 6)、(4, 6) …</text>
+<text x="450" y="400" font-size="13" fill="#b45a18">没有人告诉你坐标。全是自己加出来的。</text>
+<text x="450" y="426" font-size="13" fill="#556">yaw 是方向，(x,y) 是位置。先有方向，才有下一步的位置。</text>
+</svg>

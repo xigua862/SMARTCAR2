@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 440" font-family="Microsoft YaHei, SimHei, PingFang SC, sans-serif">
+<rect width="960" height="440" fill="#fafbfc"/>
+<text x="480" y="32" text-anchor="middle" font-size="18" font-weight="700" fill="#1a2330">直道上：线说车在哪，惯导说自己在哪，一减就是该拧的量</text>
+
+<line x1="80" y1="220" x2="420" y2="220" stroke="#c9a227" stroke-width="10"/>
+<text x="80" y="200" font-size="13" fill="#8a7010">路表 / 赛道</text>
+<rect x="168" y="208" width="40" height="24" rx="4" fill="#ffb347" stroke="#8a5a20"/>
+<polygon points="208,214 222,220 208,226" fill="#fff3d6" stroke="#8a5a20"/>
+<text x="188" y="258" text-anchor="middle" font-size="13" fill="#b45a18">真车在线上</text>
+<text x="188" y="278" text-anchor="middle" font-size="12" fill="#b45a18">线传感器：偏了 0 mm</text>
+<circle cx="188" cy="150" r="9" fill="#2aa89a"/>
+<line x1="188" y1="159" x2="188" y2="208" stroke="#2aa89a" stroke-width="2" stroke-dasharray="3 3"/>
+<text x="204" y="146" font-size="13" fill="#1f6f78">惯导点</text>
+<text x="204" y="166" font-size="12" fill="#1f6f78">相对路表偏左 15 mm</text>
+<rect x="480" y="70" width="440" height="200" rx="10" fill="#fff" stroke="#d7dee6"/>
+<text x="500" y="106" font-size="16" font-weight="700" fill="#1a2330">该拧的量 = 15 − 0 = 15 mm</text>
+<text x="500" y="142" font-size="14" fill="#334">惯导横向：点在路表左边 15 mm</text>
+<text x="500" y="170" font-size="14" fill="#334">真横向：线传感器说 0 mm</text>
+<text x="500" y="198" font-size="14" fill="#334">差 15 mm → 惯导点偏左了</text>
+<text x="500" y="234" font-size="13" fill="#1f6f78">PID 看到「偏左」，把 yaw 往右拧。</text>
+<rect x="80" y="320" width="840" height="90" rx="8" fill="#fff8ee" stroke="#e7c9a4"/>
+<text x="100" y="350" font-size="14" fill="#1a2330">真车也偏了也没关系：两个数一减，剩的还是惯导相对真值的差。</text>
+<text x="100" y="376" font-size="14" fill="#1a2330">这个差用来拧 yaw，不是用来打舵。舵仍然跟路表。</text>
+<text x="100" y="396" font-size="13" fill="#556">只在长直道中间算。弯里两个「左」对不齐。</text>
+</svg>

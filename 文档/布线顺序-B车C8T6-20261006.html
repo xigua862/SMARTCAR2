@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>布线顺序与注意事项 · B 车 C8T6 主板</title>
+<style>
+  :root{
+    --bg:#f6f7f9; --card:#fff; --ink:#1c1f23; --dim:#5b636e; --line:#dfe3e8;
+    --red:#c0392b; --redbg:#fdf0ee; --amber:#a06400; --amberbg:#fff8e6;
+    --green:#1e7a45; --greenbg:#eef8f1; --blue:#1b5e9e; --bluebg:#eef4fb;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; padding:24px 16px 64px;
+    font:15px/1.75 "Segoe UI","Microsoft YaHei",system-ui,sans-serif;
+    color:var(--ink); background:var(--bg);
+  }
+  .wrap{max-width:900px; margin:0 auto}
+  h1{font-size:22px; margin:0 0 4px}
+  .sub{color:var(--dim); font-size:13px; margin-bottom:18px}
+  .card{background:var(--card); border:1px solid var(--line); border-radius:10px;
+        padding:16px 20px; margin:0 0 16px; box-shadow:0 1px 2px rgba(0,0,0,.04)}
+  h2{font-size:17px; margin:0 0 12px; padding-bottom:8px; border-bottom:2px solid var(--line)}
+  h3{font-size:15px; margin:18px 0 6px}
+  h3:first-of-type{margin-top:0}
+  p{margin:6px 0}
+  ul,ol{margin:6px 0 6px 0; padding-left:22px}
+  li{margin:4px 0}
+  code{background:#eef0f3; padding:1px 5px; border-radius:4px; font-size:13px;
+       font-family:Consolas,"Courier New",monospace}
+  pre{background:#f2f4f7; border:1px solid var(--line); border-radius:8px;
+      padding:12px 14px; overflow-x:auto; font:13px/1.6 Consolas,"Courier New",monospace}
+  table{border-collapse:collapse; width:100%; margin:10px 0; font-size:14px}
+  th,td{border:1px solid var(--line); padding:7px 10px; text-align:left; vertical-align:top}
+  th{background:#f0f2f5; font-weight:600}
+  .ok{color:var(--green); font-weight:600}
+  .no{color:var(--red); font-weight:600}
+  .warn{color:var(--amber); font-weight:600}
+  .box{border-left:4px solid; border-radius:6px; padding:10px 14px; margin:12px 0}
+  .box.red{border-color:var(--red); background:var(--redbg)}
+  .box.amber{border-color:var(--amber); background:var(--amberbg)}
+  .box.blue{border-color:var(--blue); background:var(--bluebg)}
+  .box.green{border-color:var(--green); background:var(--greenbg)}
+  .mnemonic{
+    background:#1c1f23; color:#fff; border-radius:10px; padding:14px 18px;
+    font-size:16px; text-align:center; letter-spacing:.5px; margin:0 0 16px;
+  }
+  .mnemonic b{color:#ffd166}
+  .step{border:1px solid var(--line); border-radius:8px; padding:12px 16px; margin:10px 0; background:#fcfcfd}
+  .step .n{display:inline-block; background:#1c1f23; color:#fff; border-radius:6px;
+           padding:1px 9px; font-size:13px; margin-right:8px}
+  .step .ttl{font-weight:700; font-size:15px}
+  .step .lst{margin-top:6px}
+  label.chk{display:flex; gap:9px; align-items:flex-start; padding:5px 0; cursor:pointer}
+  label.chk input{margin-top:5px; width:16px; height:16px; flex:0 0 auto; cursor:pointer}
+  label.chk input:checked + span{color:#98a0aa; text-decoration:line-through}
+  .bar{position:sticky; top:0; z-index:5; background:rgba(246,247,249,.95);
+       backdrop-filter:blur(4px); border-bottom:1px solid var(--line);
+       padding:8px 0; margin:-24px -16px 16px; padding-left:16px; padding-right:16px;
+       display:flex; gap:12px; align-items:center; font-size:13px; color:var(--dim)}
+  .bar b{color:var(--ink)}
+  .bar button{font:inherit; font-size:12px; padding:3px 12px; border:1px solid var(--line);
+              background:#fff; border-radius:6px; cursor:pointer}
+  .bar button:hover{background:#f0f2f5}
+  footer{color:var(--dim); font-size:12.5px; text-align:center; margin-top:28px;
+         padding-top:14px; border-top:1px solid var(--line)}
+  @media print{
+    body{background:#fff; padding:0} .bar{display:none}
+    .card{break-inside:avoid; box-shadow:none}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="bar">
+    <span>已勾选 <b id="done">0</b> / <b id="total">0</b></span>
+    <button id="reset">清空全部勾选</button>
+    <button onclick="window.print()">打印</button>
+  </div>
+
+  <h1>布线顺序与注意事项 · B 车 C8T6 主板</h1>
+  <div class="sub">
+    2026-10-06 · 单面装件（元件全在顶层）· 2 层板 · 手焊 · 66×88（实际做 87）
+    <br>本页是 <b>10-04~10-06 讨论后的当前口径</b>；与旧文档冲突时以本页为准（旧文档改不改等你点头）。
+  </div>
+
+  <div class="mnemonic">
+    大电流走铺铜 &nbsp;·&nbsp; 模拟线走顶层 &nbsp;·&nbsp; <b>换层旁边配一个地孔</b>
+  </div>
+
+  <!-- ================= 顺序 ================= -->
+  <div class="card">
+    <h2>一、布线顺序（照这个来，别跳）</h2>
+
+    <div class="box blue">
+      <b>第 0 步：先在脑子里把三块分区定死（一条线都别画之前）</b>
+      <ul>
+        <li><b>功率区 = 车尾一侧</b>：AT8236 ×3、VM 铺铜、那颗共享大电容、降压模块的输入电解、XT30、电机端子 ×3。</li>
+        <li><b>模拟区 = 车头一侧</b>：灰度 10P、8 组分压阵列、陀螺仪。</li>
+        <li><b>逻辑区 = 中间</b>：MCU + 晶振 + 降压模块 / LDO + 按键 / LED / 蜂鸣器。</li>
+      </ul>
+      三块一旦定了就别来回搬——搬一件，周围十根线要重画。
+    </div>
+
+    <div class="step">
+      <span class="n">1</span><span class="ttl">先布"必须走顶层"的关键信号</span>
+      <div class="lst">
+        <ul>
+          <li><b>8 根分压后的模拟线</b>（每个 <code>1k/1.5k</code> 交点 → <code>PA0~PA7</code>）：成组、尽量短、平行一致、底下要有完整地平面。</li>
+          <li><b>晶振两根</b>：贴 MCU，下方包地，<span class="no">绝对不下底层、不走信号线穿过</span>。</li>
+          <li><b>SPI 三根 + IMU 的 CS/DRDY</b>：尽量顶层，远离功率区。</li>
+          <li><b>ISEN → 采样电阻</b>（0.11Ω 那段）：极短、贴着芯片、<span class="no">不下底层</span>。</li>
+          <li><b>PWM 四根</b>（PA8~PA11）：从 MCU 到 AT8236，走线别和模拟线并行、别绕着功率区兜圈。</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="step">
+      <span class="n">2</span><span class="ttl">再布电源：全走铺铜，不走线</span>
+      <div class="lst">
+        <ul>
+          <li><b>VM（6A）</b>：大块铺铜 + <b>开窗加锡</b>。算术：1oz 铜按 1.2mm/A，6A 要 7.2mm 宽——走线不现实。</li>
+          <li><b>GND</b>：双面铺铜（顶层铺地、底层铺地）。</li>
+          <li><b>5V / 3.3V</b>：电流小（320mA / 120mA），可以走线，但要够宽（≥1mm）。</li>
+          <li>大电流换层处 → <b>一簇 8~12 个过孔</b>（电池入口、AT8236 的 VM 与散热焊盘、电机端子、大电容地端）。</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="step">
+      <span class="n">3</span><span class="ttl">剩下"糙"的信号：这些才可以走底层</span>
+      <div class="lst">
+        <ul>
+          <li>按键 ×2、LED ×3、蜂鸣器、nFAULT、<b>编码器 A/B</b>（20kHz 以下、不急）。</li>
+          <li>每在这里换一次层，就在过孔旁 <b>1~2mm 内补一个 GND 过孔</b>（伴侣过孔）。</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="step">
+      <span class="n">4</span><span class="ttl">收尾：铺铜 → 过孔 → DRC → 丝印</span>
+      <div class="lst">
+        <ul>
+          <li>铺铜完成后打 <b>缝合过孔</b>（见第三节表）。</li>
+          <li>跑 DRC，只应剩"器件属性与供应商编号不匹配"那条提示。</li>
+          <li>检查底层地是不是 <b>一整块连通</b>（有没有孤岛 / 死铜）。</li>
+          <li>丝印：板名 + 队伍名 + <code>2026 机器车循迹</code>。</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="box red">
+      <b>这块板子不要用自动布线</b>（你以前的习惯）。自动布线会把 8 根模拟线塞到驱动底下、把地皮切碎，而且它完全不懂"返回电流"。<br>
+      最多把第 3 类糙信号交给它；第 1、2 类必须手布——也就几十根线。
+    </div>
+  </div>
+
+  <!-- ================= 硬规矩 ================= -->
+  <div class="card">
+    <h2>二、六条硬规矩（破了要重画）</h2>
+    <table>
+      <tr><th style="width:34%">规矩</th><th>为什么 / 怎么写</th></tr>
+      <tr>
+        <td><b>① 大电流走铺铜，不走线</b></td>
+        <td>6A 按 1.2mm/A@1oz 要 7.2mm 宽。VM 与功率地全程铺铜，关键处开窗加锡。换层用一簇过孔。</td>
+      </tr>
+      <tr>
+        <td><b>② 8 根模拟线（PA0~PA7）走顶层</b></td>
+        <td>全板最敏感的信号：12 位 ADC、1 个码 ≈ 0.8mV、满量程 3.0V。<br>
+            成组走、短、底下有完整地；<span class="no">不许和 PWM / SPI / 降压模块开关节点 / 电机线束并行</span>；<span class="no">不许穿功率区</span>。</td>
+      </tr>
+      <tr>
+        <td><b>③ 晶振贴 MCU、下方包地</b></td>
+        <td>两根线极短，晶振正下方铺地、<span class="no">不放任何走线、不下底层</span>。</td>
+      </tr>
+      <tr>
+        <td><b>④ ISEN 那段极短</b></td>
+        <td>从芯片 ISEN 脚到 0.11Ω 电阻这一段上面就是被测电流，贴芯片走、别下底层、别和大电流汇流。</td>
+      </tr>
+      <tr>
+        <td><b>⑤ 换层就配"伴侣地孔"</b></td>
+        <td>换层本身不坏信号（你这频率，过孔电感可忽略）。<b>坏的是返回电流跟不过去。</b><br>
+            措施：每个信号过孔旁 1~2mm 内放一个 GND 过孔。</td>
+      </tr>
+      <tr>
+        <td><b>⑥ 底层先是"地"，才是"走线层"</b></td>
+        <td>底层每加一根线，就在地皮上划一道缝。底层走线要<b>短、稀</b>；画完确认地皮还是一整块。</td>
+      </tr>
+    </table>
+  </div>
+
+  <!-- ================= 过孔 ================= -->
+  <div class="card">
+    <h2>三、过孔怎么打</h2>
+    <p><b>缝合过孔</b>：没有元件要插，也照样打孔，纯粹为了让顶/底两层的地连在一起。<br>
+       尺寸工艺和普通过孔一样（用同一档，别单独设小孔），立创打样不额外收费。</p>
+<pre>顶层铜皮（地）════════════════════
+        ○  ○  ○     ← 缝合过孔（孔壁镀铜，上下连通）
+底层铜皮（地）════════════════════</pre>
+    <table>
+      <tr><th style="width:52%">位置</th><th>密度 / 数量</th></tr>
+      <tr><td>板子四周沿边一整圈</td><td>5~10mm 一个（66×88 一圈约 40 个）</td></tr>
+      <tr><td>每个插件的<b>地脚</b>旁</td><td>1~2 个</td></tr>
+      <tr><td>每颗去耦 / 分压电容的<b>地端</b>旁</td><td>1 个</td></tr>
+      <tr><td>大片空白铜皮</td><td>10mm 网格</td></tr>
+      <tr><td><b>风机孔外圈沿圆周</b></td><td>5~10mm 一个（那个孔把地平面挖了个洞）</td></tr>
+      <tr><td>晶振 / IMU 底下</td><td>欢迎打（那里本来就要求包地）</td></tr>
+      <tr><td><b>大电流换层处</b>（VM / PPAD / 端子 / 大电容地）</td><td><b>一簇 8~12 个</b></td></tr>
+      <tr><td>AT8236 裸露焊盘下方</td><td>9~16 个（散热用）</td></tr>
+      <tr><td>每个信号换层处</td><td>旁 1~2mm 内 1 个 GND 孔（伴侣孔）</td></tr>
+    </table>
+  </div>
+
+  <!-- ================= 摆位 ================= -->
+  <div class="card">
+    <h2>四、摆位（画线之前先摆对）</h2>
+    <ul>
+      <li><b>8 组分压贴灰度 10P 接口</b>，不是贴 MCU（每路：<code>1k</code> 串 + <code>1.5k</code> 到地 + <code>100nF</code>）。</li>
+      <li><b>陀螺仪</b>：车头中间、<b>Y 轴朝 FRONT</b>（8P 座跟着转 90°）、四角减震柱（独立减震，别和整板垫柱共用）。</li>
+      <li><b>陀螺仪离风机孔 ≥40mm 做不到</b>（现在 25mm）——用减震来补，别为此把陀螺仪搬到车底板（底板振得更厉害、引线更不可靠、热熔胶会松）。</li>
+      <li><b>降压模块</b>：输入电解 + 输出电解都贴模块引脚，各自再配一颗陶瓷（100nF/1µF）。<b>输入那颗耐压 ≥25V</b>。它的<b>开关节点和电感要远离 8 组分压阵列与陀螺仪</b>。</li>
+      <li>灰度 10P 的 <b>5V 脚旁留一颗 100µF 低 ESR + 10µF 陶瓷的位</b>（先留、先不贴；实测有纹波再贴）。</li>
+      <li>AT8236 裸焊盘 → 大块铜皮 + 散热过孔；那颗共享的 <b>25V/100µF 聚合物</b>贴在 VM 进板点。</li>
+      <li>接插件全部走板边；电机端子丝印标 <b>左 / 右 / 风机</b>。</li>
+    </ul>
+  </div>
+
+  <!-- ================= 三个坑 ================= -->
+  <div class="card">
+    <h2>五、三个"只在赛道上现形"的坑</h2>
+    <div class="box red">
+      <b>1. 电机 6A 的回流，不许从 MCU、晶振、陀螺仪、8 组分压的底下过。</b><br>
+      量化：1oz 铜 1mm 宽 10mm 长 ≈ 5mΩ ⇒ 6A 走 10mm 就是 <b>30mV</b> 地压差 ⇒ 落到 12 位 ADC 上约 <b>36 个码</b>，而且跟着 PWM 在抖。这就是"灰度读数抖"的机理。
+    </div>
+    <div class="box red">
+      <b>2. 灰度模拟线不许穿功率区、不许和 VM 铺铜并行。</b>走车头那一侧。
+    </div>
+    <div class="box red">
+      <b>3. 陀螺仪符号自检（上电必做）：</b>绕 Z 轴按 FRONT 方向转，角速度符号必须为正。<br>
+      反了 = 车全程往反方向修。这条要单独加进上电自检（现有自检里只有"手转两轮验编码器"）。
+    </div>
+  </div>
+
+  <!-- ================= 自检 ================= -->
+  <div class="card">
+    <h2>六、出 Gerber 前逐项打勾</h2>
+    <div id="checklist">
+      <label class="chk"><input type="checkbox"><span>DRC 跑过，只剩"器件属性与供应商编号不匹配"那条提示</span></label>
+      <label class="chk"><input type="checkbox"><span><b>10 个</b>安装孔（两侧各 5，不是 5 个）· Y = 14/28/37/54/63 · 对角线复核</span></label>
+      <label class="chk"><input type="checkbox"><span>丝印有板名 + 队伍名 + <code>2026 机器车循迹</code>（规则硬要求，检录要看）</span></label>
+      <label class="chk"><input type="checkbox"><span>每个接插件旁标名称；电机端子标「左 / 右 / 风机」；降压模块标 IN / OUT</span></label>
+      <label class="chk"><input type="checkbox"><span>底层<b>零元件</b>；朝下的排针焊后剪平</span></label>
+      <label class="chk"><input type="checkbox"><span>板边 4 个测试盘：<b>3.3V / VM / GND / 空闲 ADC</b></span></label>
+      <label class="chk"><input type="checkbox"><span>灰度 8 组分压全在（<code>1k + 1.5k + 100nF</code> × 8）</span></label>
+      <label class="chk"><input type="checkbox"><span>灰度模块用「并出」10P：A0~A7 → PA0~PA7；针序与模块实物一致</span></label>
+      <label class="chk"><input type="checkbox"><span>AT8236 ×3：R_ISEN = <b>0.11Ω / 2512</b>（≥1W，建议直接买 2W）；裸焊盘大铜皮 + 散热过孔</span></label>
+      <label class="chk"><input type="checkbox"><span>AT8236 的 pin4 VREF 接的是 <b>3.3V</b>（若是 5V，限流点会变成 4.5A，3A 保护静默失效）</span></label>
+      <label class="chk"><input type="checkbox"><span>VM 大电容：整轨<b>一颗</b> 25V/100µF 聚合物 + 每颗 AT8236 脚边 100nF</span></label>
+      <label class="chk"><input type="checkbox"><span>两路保险分开：VM = 一次性慢熔 10A(2410)；逻辑轨 = 0.5A PTC</span></label>
+      <label class="chk"><input type="checkbox"><span>开关只串逻辑轨（不串 VM）</span></label>
+      <label class="chk"><input type="checkbox"><span>接插件齐：XT30 / 电机端子×3 / 灰度 10P / 编码器 6P×2 / IMU 8P / SWD+串口 6P / 按键×2 / 蜂鸣</span></label>
+      <label class="chk"><input type="checkbox"><span>丝印：前轴线 + 35/40/45/50/55 前瞻刻线 + <code>FRONT →</code>（板前缘前 17mm 处是探头连线）</span></label>
+      <label class="chk"><input type="checkbox"><span>板框 <b>87</b>（不是 88）；后缘与框架后缘平齐</span></label>
+      <label class="chk"><input type="checkbox"><span>垫高 6~8mm 的垫柱孔位留好</span></label>
+      <label class="chk"><input type="checkbox"><span><b>底层地是一整块连通</b>（无孤岛 / 死铜）</span></label>
+      <label class="chk"><input type="checkbox"><span>每个信号换层处都有伴侣地孔；大电流换层处都是过孔簇</span></label>
+      <label class="chk"><input type="checkbox"><span>8 根模拟线全程走顶层（或短距离换层 + 两侧地孔），未穿功率区</span></label>
+    </div>
+  </div>
+
+  <!-- ================= 未决 ================= -->
+  <div class="card">
+    <h2>七、还没定 / 还没量的（别当已定）</h2>
+    <div class="box amber">
+      <label class="chk"><input type="checkbox"><span><b>X = 框架孔的横向位置</b>（量法：框架孔中心 → 轮子内侧面的距离）→ 10 个安装孔的 X 现在还是暂定</span></label>
+      <label class="chk"><input type="checkbox"><span><b>编码器 6P 针距</b>用卡尺量（GH1.25 名义 1.25mm）——封装错了打样后才发现</span></label>
+      <label class="chk"><input type="checkbox"><span><b>灰度模块</b>：最小检测高度（6mm 能否认线）、输出电平（确认 8 组分压到底要不要）</span></label>
+      <label class="chk"><input type="checkbox"><span><b>喷绘布 940nm 对比度</b>（最高优先）：模块供 5V，压白线 / 压黑底量 AO 差值</span></label>
+      <label class="chk"><input type="checkbox"><span><b>串口"能发不能收"</b>两个自检：① 拔掉所有串口线量 PB7 对地 ≈ VCC；② 短接 6P 上 PB6/PB7 自发自收</span></label>
+    </div>
+  </div>
+
+  <footer>
+    布线顺序与注意事项（B 车 C8T6 主板）· 2026-10-06<br>
+    一句话：<b>大电流走铺铜，模拟线走顶层，换层旁边配一个地孔。</b>
+  </footer>
+</div>
+
+<script>
+(function(){
+  var key = 'bcar_route_checklist_v1';
+  var boxes = Array.prototype.slice.call(document.querySelectorAll('input[type=checkbox]'));
+  var saved = {};
+  try { saved = JSON.parse(localStorage.getItem(key) || '{}'); } catch(e) {}
+
+  function update(){
+    var n = boxes.filter(function(b){ return b.checked; }).length;
+    document.getElementById('done').textContent = n;
+    document.getElementById('total').textContent = boxes.length;
+  }
+  boxes.forEach(function(b, i){
+    if (saved[i]) b.checked = true;
+    b.addEventListener('change', function(){
+      saved[i] = b.checked;
+      try { localStorage.setItem(key, JSON.stringify(saved)); } catch(e) {}
+      update();
+    });
+  });
+  document.getElementById('reset').addEventListener('click', function(){
+    boxes.forEach(function(b){ b.checked = false; });
+    saved = {};
+    try { localStorage.removeItem(key); } catch(e) {}
+    update();
+  });
+  update();
+})();
+</script>
+</body>
+</html>

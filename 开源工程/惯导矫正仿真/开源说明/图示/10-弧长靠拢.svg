@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 360" font-family="Microsoft YaHei, SimHei, PingFang SC, sans-serif">
+<rect width="920" height="360" fill="#fafbfc"/>
+<text x="460" y="32" text-anchor="middle" font-size="18" font-weight="700" fill="#1a2330">方向对了，还要把「表上走到哪」拨准</text>
+
+<line x1="80" y1="140" x2="840" y2="140" stroke="#2aa89a" stroke-width="5"/>
+<g fill="#1f6f78">
+  <circle cx="80" cy="140" r="5"/><circle cx="200" cy="140" r="5"/>
+  <circle cx="320" cy="140" r="5"/><circle cx="440" cy="140" r="5"/>
+  <circle cx="560" cy="140" r="5"/><circle cx="680" cy="140" r="5"/>
+  <circle cx="800" cy="140" r="5"/>
+</g>
+<circle cx="440" cy="140" r="9" fill="#2aa89a"/>
+<text x="440" y="118" text-anchor="middle" font-size="13" fill="#1f6f78">惯导点投在这 → 该用 pts[3]</text>
+<circle cx="560" cy="200" r="8" fill="#4a90d9"/>
+<text x="572" y="204" font-size="13" fill="#1a4f8a">编码器还在报 pts[4]</text>
+<path d="M560 200 H452" stroke="#1a2330" stroke-width="2"/>
+<polygon points="460,194 448,200 460,206" fill="#1a2330"/>
+<text x="460" y="240" font-size="14" fill="#1a2330">把编码器读数慢慢拨回 pts[3]</text>
+<rect x="80" y="270" width="760" height="64" rx="8" fill="#fff" stroke="#d7dee6"/>
+<text x="100" y="298" font-size="14" fill="#1a2330">不要去估一个「尺子比例」再乘以后所有路程。弯里噪声会把比例污染。</text>
+<text x="100" y="320" font-size="13" fill="#556">只拨当前读到第几毫米。差太大别拉，可能投到邻段去了。</text>
+</svg>

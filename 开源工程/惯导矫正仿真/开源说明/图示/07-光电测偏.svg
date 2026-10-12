@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 380" font-family="Microsoft YaHei, SimHei, PingFang SC, sans-serif">
+<rect width="920" height="380" fill="#fafbfc"/>
+<text x="460" y="32" text-anchor="middle" font-size="18" font-weight="700" fill="#1a2330">线传感器：线在车头前方偏左还是偏右</text>
+
+<rect x="360" y="60" width="20" height="250" rx="4" fill="#e8c547"/>
+<text x="390" y="80" font-size="13" fill="#8a7010">赛道</text>
+<g transform="translate(520,230)">
+  <rect x="-28" y="-16" width="56" height="32" rx="5" fill="#ffb347" stroke="#8a5a20"/>
+  <polygon points="28,-7 42,0 28,7" fill="#fff3d6" stroke="#8a5a20"/>
+  <line x1="0" y1="0" x2="0" y2="-80" stroke="#4a90d9" stroke-width="2" stroke-dasharray="4 3"/>
+  <line x1="-40" y1="-80" x2="40" y2="-80" stroke="#4a90d9" stroke-width="5" stroke-linecap="round"/>
+  <g fill="#1a4f8a">
+    <circle cx="-40" cy="-80" r="3.2"/><circle cx="-20" cy="-80" r="3.2"/>
+    <circle cx="0" cy="-80" r="3.2"/><circle cx="20" cy="-80" r="3.2"/>
+    <circle cx="40" cy="-80" r="3.2"/>
+  </g>
+  <circle cx="-20" cy="-80" r="8" fill="none" stroke="#2a6f4e" stroke-width="2"/>
+  <text x="52" y="-76" font-size="13" fill="#1a4f8a">线打在左边</text>
+</g>
+<text x="200" y="150" font-size="14" fill="#2a6f4e">线在车左边</text>
+<text x="200" y="174" font-size="14" fill="#2a6f4e">→ 真横向为正</text>
+<rect x="60" y="290" width="800" height="64" rx="8" fill="#fff" stroke="#d7dee6"/>
+<text x="80" y="318" font-size="14" fill="#1a2330">光电、电感、摄像头都行，只要给出「线在哪一侧、偏多少毫米」。</text>
+<text x="80" y="340" font-size="13" fill="#556">测的是车头前面，不是车心。直道上差不多；弯里对不齐，所以弯里不用它修惯导。</text>
+</svg>

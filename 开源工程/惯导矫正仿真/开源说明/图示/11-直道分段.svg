@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 280" font-family="Microsoft YaHei, SimHei, PingFang SC, sans-serif">
+<rect width="920" height="280" fill="#fafbfc"/>
+<text x="460" y="32" text-anchor="middle" font-size="18" font-weight="700" fill="#1a2330">只修长直道中间，弯里带着上次的补偿走</text>
+
+<path d="M50 140 H230" fill="none" stroke="#ff8a4c" stroke-width="12" stroke-linecap="round"/>
+<path d="M230 140 H340" fill="none" stroke="#e6c35c" stroke-width="12" stroke-linecap="round"/>
+<path d="M340 140 H580" fill="none" stroke="#4ee0a8" stroke-width="12" stroke-linecap="round"/>
+<path d="M580 140 H690" fill="none" stroke="#e6c35c" stroke-width="12" stroke-linecap="round"/>
+<path d="M690 140 C 780 140, 820 80, 880 70" fill="none" stroke="#ff8a4c" stroke-width="12" stroke-linecap="round"/>
+<text x="140" y="180" text-anchor="middle" font-size="14" fill="#c45c20">弯 · 不修</text>
+<text x="285" y="180" text-anchor="middle" font-size="14" fill="#8a7010">出入弯</text>
+<text x="460" y="180" text-anchor="middle" font-size="14" fill="#1f6f78">直道中间 · 在这里拧 yaw</text>
+<text x="635" y="180" text-anchor="middle" font-size="14" fill="#8a7010">出入弯</text>
+<text x="800" y="108" text-anchor="middle" font-size="14" fill="#c45c20">弯 · 不修</text>
+<text x="460" y="224" text-anchor="middle" font-size="13" fill="#334">路表航向几乎不变才算直。太短的直段丢掉，两端再裁一段。</text>
+<text x="460" y="248" text-anchor="middle" font-size="13" fill="#334">弯里两个横向对不齐。补偿角过弯保持，下一条直道接着用。</text>
+</svg>
