@@ -332,7 +332,7 @@
               <MiscControls />
               <Define>USE_HAL_DRIVER,STM32F103xB</Define>
               <Undefine />
-              <IncludePath>../Core/Inc;../Drivers/STM32F1xx_HAL_Driver/Inc/Legacy;../Drivers/STM32F1xx_HAL_Driver/Inc;../Drivers/CMSIS/Device/ST/STM32F1xx/Include;../Drivers/CMSIS/Include;../bsp;../drivers;../middleware;../control;../app</IncludePath>
+              <IncludePath>../Core/Inc;../Drivers/STM32F1xx_HAL_Driver/Inc/Legacy;../Drivers/STM32F1xx_HAL_Driver/Inc;../Drivers/CMSIS/Device/ST/STM32F1xx/Include;../Drivers/CMSIS/Include;../bsp;../drivers;../middleware;../control;../app;../src/bsp;../src/drivers;../src/middleware;../src/control;../src/app</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -478,38 +478,38 @@
             </File>
           </Files>
         </Group>
-        <Group>
-        <GroupName>bsp</GroupName>
+      <Group>
+        <GroupName>src/bsp</GroupName>
         <Files>
         <File>
           <FileName>bsp_afio.c</FileName>
           <FileType>1</FileType>
-          <FilePath>../bsp/bsp_afio.c</FilePath>
+          <FilePath>../src/bsp/bsp_afio.c</FilePath>
         </File>
         <File>
           <FileName>bsp_gpio.c</FileName>
           <FileType>1</FileType>
-          <FilePath>../bsp/bsp_gpio.c</FilePath>
+          <FilePath>../src/bsp/bsp_gpio.c</FilePath>
         </File>
         <File>
           <FileName>bsp_systick.c</FileName>
           <FileType>1</FileType>
-          <FilePath>../bsp/bsp_systick.c</FilePath>
+          <FilePath>../src/bsp/bsp_systick.c</FilePath>
         </File>
         </Files>
       </Group>
       <Group>
-        <GroupName>drivers</GroupName>
+        <GroupName>src/drivers</GroupName>
         <Files>
         <File>
           <FileName>led.c</FileName>
           <FileType>1</FileType>
-          <FilePath>../drivers/led.c</FilePath>
+          <FilePath>../src/drivers/led.c</FilePath>
         </File>
         <File>
           <FileName>uart_dbg.c</FileName>
           <FileType>1</FileType>
-          <FilePath>../drivers/uart_dbg.c</FilePath>
+          <FilePath>../src/drivers/uart_dbg.c</FilePath>
         </File>
         </Files>
       </Group>
