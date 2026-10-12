@@ -18,7 +18,6 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
-#include "usart.h"
 #include "gpio.h"
 
 /* Private includes ----------------------------------------------------------*/
@@ -112,7 +111,9 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
-  MX_USART1_UART_Init();
+  /* ⚠ 这里**不要**加 MX_USART1_UART_Init()：
+   * 它会把 PA9/PA10 配成串口，而这两块脚在 B 车上是**电机 PWM**（TIM1_CH2/CH3）。
+   * 本板串口走的是重映射后的 PB6/PB7，初始化在 uart_dbg_init() 里手写（见下）。*/
   /* USER CODE BEGIN 2 */
   /* 初始化顺序有讲究，别调换：
    *   1) AFIO  —— 先关 JTAG 保 SWD、把 USART1 重映射到 PB6/PB7
