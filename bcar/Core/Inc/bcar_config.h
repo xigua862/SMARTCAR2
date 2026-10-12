@@ -1,0 +1,36 @@
+/**
+  ******************************************************************************
+  * @file    bcar_config.h
+  * @brief   B 车固件全局开关与常量（改行为先改这里）
+  *
+  * 说明：本文件是所有"编译期开关"的唯一入口。数值型参数（PID、速度上限等）
+  *       不属于这里，它们走 app/param.c 的参数表 + 串口 SET。
+  ******************************************************************************
+  */
+#ifndef __BCAR_CONFIG_H
+#define __BCAR_CONFIG_H
+
+#include <stdint.h>
+
+/* ---- 版本 ---- */
+#define BCAR_FW_VERSION      "bcar-0.1.0"
+
+/* ---- 时基 ---- */
+#define BCAR_TICK_MS         5u      /* 控制节拍：5ms（框架 §3.1）*/
+#define BCAR_SYSTICK_MS      1u      /* HAL 时基仍是 1ms，5ms 由它整除得到 */
+
+/* ---- 串口 ---- */
+#define BCAR_UART_BAUD       115200u
+#define BCAR_UART_RX_BUF     256u    /* 接收环形缓冲字节数（必须是 2 的幂）*/
+
+/* ---- 状态灯极性 ----
+ * 板上 3 只 LED：GPIO → 470Ω → LED → GND，所以「输出高 = 亮」。
+ * 若实测反了（亮灭相反），把这里改成 0 即可，不用改驱动。 */
+#define BCAR_LED_ACTIVE_HIGH 1
+
+/* ---- 上电行为 ----
+ * 0 = 上电只做自检 + 待机，等 PC13 发车键（安全，默认）
+ * 1 = 上电直接进运行状态（调试用，比赛前必须回 0） */
+#define BCAR_AUTORUN_DEFAULT 0
+
+#endif /* __BCAR_CONFIG_H */

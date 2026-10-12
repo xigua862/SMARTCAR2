@@ -16,6 +16,7 @@
 
 # ===== Keil 中间文件（2026-10-02 整理后工程已移到 固件-STM32空壳/，故用 **/ 匹配任意层）=====
 **/MDK-ARM/test16/
+**/MDK-ARM/bcar/
 **/MDK-ARM/Objects/
 **/MDK-ARM/Listings/
 **/mdk/out_file/
@@ -28,6 +29,13 @@
 *.crf
 *.lst
 *.sct
+
+# ===== B 车固件（bcar/）的过程文件：构建日志与 CubeMX 脚本回显，不进 git =====
+bcar/build*.log
+bcar/MDK-ARM/build*.log
+bcar/gen*.txt
+bcar/gen*.log
+bcar/*.log
 
 # ===== 编辑器 / IDE 自己的东西 =====
 .qoder-cn/
