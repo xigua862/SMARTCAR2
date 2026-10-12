@@ -31,6 +31,8 @@
 #include "buzzer.h"
 #include "key.h"
 #include "motor.h"
+#include "encoder.h"
+#include "odom.h"
 #include "fsm.h"
 #include "cmdline.h"
 /* USER CODE END Includes */
@@ -133,6 +135,18 @@ int main(void)
     led_on(LED3);
   }
 
+  /* 编码器（TIM2/TIM3 硬件正交）+ 里程解算 */
+  (void)encoder_init();
+  {
+    odom_cfg_t oc;
+    oc.mm_per_count = BCAR_MM_PER_COUNT;   /* ★待标定 */
+    oc.track_mm     = BCAR_TRACK_MM;
+    oc.dt_s         = (float)BCAR_TICK_MS / 1000.0f;
+    odom_init(&oc);
+  }
+  uart_dbg_printf("ENC TIM2/TIM3 quadrature OK (mm_per_count x1000 = %u, 待标定)\r\n",
+                  (unsigned)(BCAR_MM_PER_COUNT * 1000.0f));
+
   /* 进入待机：电机刹车，等发车键或串口命令 */
   (void)fsm_set(FSM_IDLE);
 
@@ -158,6 +172,12 @@ int main(void)
     {
       key_poll();
       buzzer_poll();
+
+      /* 编码器 → 里程：这一拍走了多少，立刻进解算。
+       * ⚠ 现在没有陀螺（阶段 4 才接），所以航向走"差速推算"退路；
+       *   等 IMU 上来后把第三个参数换成 1 并给陀螺的 dθ。 */
+      encoder_poll();
+      odom_step(encoder_delta(ENC_L), encoder_delta(ENC_R), 0u, 0.0f);
 
       /* --- 按键事件 --- */
       if (key_take_press(KEY_TRIG))          /* PB0：进测试模式 */

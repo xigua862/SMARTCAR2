@@ -507,6 +507,11 @@
           <FilePath>../src/drivers/buzzer.c</FilePath>
         </File>
         <File>
+          <FileName>encoder.c</FileName>
+          <FileType>1</FileType>
+          <FilePath>../src/drivers/encoder.c</FilePath>
+        </File>
+        <File>
           <FileName>key.c</FileName>
           <FileType>1</FileType>
           <FilePath>../src/drivers/key.c</FilePath>
@@ -525,6 +530,16 @@
           <FileName>uart_dbg.c</FileName>
           <FileType>1</FileType>
           <FilePath>../src/drivers/uart_dbg.c</FilePath>
+        </File>
+        </Files>
+      </Group>
+      <Group>
+        <GroupName>src/middleware</GroupName>
+        <Files>
+        <File>
+          <FileName>odom.c</FileName>
+          <FileType>1</FileType>
+          <FilePath>../src/middleware/odom.c</FilePath>
         </File>
         </Files>
       </Group>

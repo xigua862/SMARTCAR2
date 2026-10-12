@@ -13,6 +13,8 @@
 #include "key.h"
 #include "led.h"
 #include "motor.h"
+#include "encoder.h"
+#include "odom.h"
 #include "str_util.h"
 #include "uart_dbg.h"
 
@@ -38,6 +40,9 @@ static void print_help(void)
     uart_dbg_puts("  MOTOR <dir> <mag>     两侧同设；dir=FWD|REV|BRAKE|COAST，mag=0~1000\r\n");
     uart_dbg_puts("  MOTOR L|R <dir> <mag> 只设一侧（L=PA8/PA9，R=PA10/PA11）\r\n");
     uart_dbg_puts("  KEY                   打印两个按键当前电平\r\n");
+    uart_dbg_puts("  ENC                   编码器累计计数/本拍增量（★标定用）\r\n");
+    uart_dbg_puts("  ODOM                  里程与位姿（x/y/yaw/s/v）\r\n");
+    uart_dbg_puts("  ZERO                  编码器与位姿清零（标定起点）\r\n");
     uart_dbg_puts("  LOOPBACK [ms]         TX-RX 短接时的回环自检（默认 200ms）\r\n");
 }
 
@@ -101,6 +106,26 @@ static uint8_t arg_u32(char *line, uint32_t *out)
     su_tok(a1);
     return su_parse_u32(a1, out);
 }
+
+/* 打印定点小数（一位）—— 我们的 mini printf 不支持 %f（软浮点格式化很占空间），
+ * 所以在整数域里自己拆"整数.小数"，精度够看里程用。 */
+static void print_fixed1(const char *label, float v)
+{
+    int32_t  scaled;
+    uint32_t ip, fp;
+
+    if (v < 0.0f) {
+        uart_dbg_printf("%s=-", label);
+        v = -v;
+    } else {
+        uart_dbg_printf("%s=", label);
+    }
+    scaled = (int32_t)(v * 10.0f + 0.5f);
+    ip = (uint32_t)(scaled / 10);
+    fp = (uint32_t)(scaled % 10);
+    uart_dbg_printf("%u.%u", ip, fp);
+}
+#define PRINT_FIXED(label, v)  print_fixed1(label, v)
 
 /* ---------------- 分发 ---------------- */
 
@@ -166,6 +191,24 @@ static void execute(char *line)
     } else if (su_streq(w, "KEY")) {
         uart_dbg_printf("KEY START(PC13)=%u TRIG(PB0)=%u (1=按住)\r\n",
                         (unsigned)key_is_down(KEY_START), (unsigned)key_is_down(KEY_TRIG));
+    } else if (su_streq(w, "ENC")) {
+        /* ★标定就看这行：推车 1 米，看 total 涨了多少 → mm_per_count = 1000/计数 */
+        uart_dbg_printf("ENC L total=%d delta=%d | R total=%d delta=%d\r\n",
+                        (int)encoder_total(ENC_L), (int)encoder_delta(ENC_L),
+                        (int)encoder_total(ENC_R), (int)encoder_delta(ENC_R));
+    } else if (su_streq(w, "ODOM")) {
+        odom_state_t o = odom_get();
+        PRINT_FIXED("x_mm", o.x_mm);
+        PRINT_FIXED(" y_mm", o.y_mm);
+        uart_dbg_puts("\r\n");
+        PRINT_FIXED("yaw_deg", o.yaw_deg);
+        PRINT_FIXED(" s_mm", o.s_mm);
+        PRINT_FIXED(" v_mm/s", o.v_mm_s);
+        uart_dbg_puts("\r\n");
+    } else if (su_streq(w, "ZERO")) {
+        encoder_reset();
+        odom_reset();
+        uart_dbg_puts("OK ZERO（编码器与位姿已清零）\r\n");
     } else if (su_streq(w, "LOOPBACK")) {
         uint32_t ms = 200u;
         uint8_t  ok;
