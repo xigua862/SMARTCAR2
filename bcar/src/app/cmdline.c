@@ -6,6 +6,7 @@
   */
 #include "cmdline.h"
 #include "bcar_config.h"
+#include "stm32f1xx_hal.h"
 #include "bsp_afio.h"
 #include "bsp_systick.h"
 #include "buzzer.h"
@@ -13,14 +14,19 @@
 #include "key.h"
 #include "led.h"
 #include "motor.h"
+#include "adc_ir.h"
 #include "encoder.h"
 #include "imu660.h"
+#include "line_pos.h"
 #include "heading.h"
 #include "odom.h"
 #include "str_util.h"
 #include "uart_dbg.h"
 
 volatile uint8_t g_hello_en = 1u;
+
+/* 由 main.c 维护的最新灰度结果 */
+extern line_pos_t s_line_out;
 
 #define LINE_MAX 64u
 
@@ -49,6 +55,13 @@ static void print_help(void)
     uart_dbg_puts("  ENC                   编码器累计计数/本拍增量（★标定用）\r\n");
     uart_dbg_puts("  ODOM                  里程与位姿（x/y/yaw/s/v）\r\n");
     uart_dbg_puts("  ZERO                  编码器与位姿清零（标定起点）\r\n");
+    uart_dbg_puts("  IMU                   陀螺/加速度原始值与 dps（查 SPI 接线用）\r\n");
+    uart_dbg_puts("  GYROZERO              陀螺零偏标定（车静止约 1 秒）\r\n");
+    uart_dbg_puts("  HEAD                  当前航向、零偏、死区\r\n");
+    uart_dbg_puts("  IR                    8 路灰度原始值 + 归一化 + 偏差（查探头用）\r\n");
+    uart_dbg_puts("  IRBLACK               把当前读数教成全黑基准（车放黑底上执行）\r\n");
+    uart_dbg_puts("  IRWHITE               把当前读数教成白线基准（车放白线上执行）\r\n");
+    uart_dbg_puts("  IRPOS <间距mm*100>    改探头间距（如 IRPOS 600 = 6.00mm）\r\n");
     uart_dbg_puts("  LOOPBACK [ms]         TX-RX 短接时的回环自检（默认 200ms）\r\n");
 }
 
@@ -217,6 +230,67 @@ static void execute(char *line)
         PRINT_FIXED("  bias_z", heading_bias(2));
         PRINT_FIXED("  dead_zone", heading_dead_zone());
         uart_dbg_printf("  samples=%u\r\n", (unsigned)heading_samples());
+    } else if (su_streq(w, "IR")) {
+        const uint16_t *raw = adc_ir_raw_all();
+        const line_pos_t *lp = &s_line_out;
+        uint8_t k;
+        uart_dbg_puts("IR raw  ");
+        for (k = 0u; k < LINE_CH; k++) {
+            uart_dbg_printf("%4u ", (unsigned)raw[k]);
+        }
+        uart_dbg_puts("\r\nIR p*100 ");
+        for (k = 0u; k < LINE_CH; k++) {
+            uart_dbg_printf("%4d ", (int)(lp->p[k] * 100.0f));
+        }
+        uart_dbg_printf("\r\nIR err_mm_x10=%d sum_p_x100=%d visible=%u seq=%u\r\n",
+                        (int)(lp->err_mm * 10.0f), (int)(lp->sum_p * 100.0f),
+                        (unsigned)lp->visible, (unsigned)adc_ir_seq_count());
+    } else if (su_streq(w, "IRBLACK") || su_streq(w, "IRWHITE")) {
+        uint32_t sum[LINE_CH];
+        uint8_t  k, n;
+        uint8_t  as_black = su_streq(w, "IRBLACK") ? 1u : 0u;
+        for (k = 0u; k < LINE_CH; k++) {
+            sum[k] = 0u;
+        }
+        for (n = 0u; n < (uint8_t)BCAR_IR_CAL_SAMPLES; n++) {
+            const uint16_t *r = adc_ir_raw_all();
+            for (k = 0u; k < LINE_CH; k++) {
+                sum[k] += (uint32_t)r[k];
+            }
+            HAL_Delay(2);
+        }
+        for (k = 0u; k < LINE_CH; k++) {
+            float avg = (float)sum[k] / (float)BCAR_IR_CAL_SAMPLES;
+            const line_pos_cfg_t *c = line_pos_cfg();
+            if (as_black) {
+                line_pos_set_ref(k, avg, c->white[k]);
+            } else {
+                line_pos_set_ref(k, c->black[k], avg);
+            }
+        }
+        uart_dbg_puts(as_black ? "OK 已教成\"全黑\"基准："
+                               : "OK 已教成\"白线\"基准：");
+        {
+            const line_pos_cfg_t *c = line_pos_cfg();
+            for (k = 0u; k < LINE_CH; k++) {
+                uart_dbg_printf("%d ", (int)(as_black ? c->black[k] : c->white[k]));
+            }
+        }
+        uart_dbg_puts("\r\n（黑白基准是 RAM 里的，掉电就没了；标定完请把数抄进 bcar_config.h）\r\n");
+    } else if (su_streq(w, "IRPOS")) {
+        uint32_t pitch_x100 = 600u;
+        if (arg_u32(line, &pitch_x100) && pitch_x100 > 0u && pitch_x100 < 10000u) {
+            line_pos_cfg_t *c = line_pos_cfg_mut();
+            float pitch = (float)pitch_x100 / 100.0f;
+            uint8_t k;
+            for (k = 0u; k < LINE_CH; k++) {
+                c->pos_mm[k] = ((float)k - 3.5f) * pitch;
+            }
+            uart_dbg_printf("OK 探头间距设为 %u.%02u mm（位置已按中心对称重排）\r\n",
+                            (unsigned)(pitch_x100 / 100u), (unsigned)(pitch_x100 % 100u));
+        } else {
+            uart_dbg_puts("ERR 用法: IRPOS <间距mm*100>，例如 IRPOS 600 = 6.00mm\r\n");
+        }
     } else if (su_streq(w, "KEY")) {
         uart_dbg_printf("KEY START(PC13)=%u TRIG(PB0)=%u (1=按住)\r\n",
                         (unsigned)key_is_down(KEY_START), (unsigned)key_is_down(KEY_TRIG));

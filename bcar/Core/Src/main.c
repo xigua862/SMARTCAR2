@@ -31,8 +31,10 @@
 #include "buzzer.h"
 #include "key.h"
 #include "motor.h"
+#include "adc_ir.h"
 #include "encoder.h"
 #include "imu660.h"
+#include "line_pos.h"
 #include "heading.h"
 #include "odom.h"
 #include "fsm.h"
@@ -73,6 +75,10 @@ static uint32_t s_t_led   = 0u;   /* 500ms 走马灯 */
 static uint32_t s_t_print = 0u;   /* 1000ms 串口心跳 */
 static uint32_t s_hello   = 0u;   /* 心跳序号，用来验证"每秒一条不丢" */
 static uint8_t  s_chase   = 0u;   /* 走马灯位置 0/1/2=亮某只，3=全灭 */
+
+/* 最近一次的灰度结果（8 路归一化值 + 偏差）。
+ * 放全局是为了让 cmdline 能直接打印 —— 阶段 6 起转向环也读它。 */
+line_pos_t s_line_out;
 /* USER CODE END 0 */
 
 /**
@@ -149,6 +155,22 @@ int main(void)
   uart_dbg_printf("ENC TIM2/TIM3 quadrature OK (mm_per_count x1000 = %u, 待标定)\r\n",
                   (unsigned)(BCAR_MM_PER_COUNT * 1000.0f));
 
+  /* 灰度 8 路：ADC 扫描 + DMA 一开就一直在后台滚，CPU 不用管 */
+  adc_ir_init();
+  {
+    line_pos_cfg_t lc;
+    uint8_t k;
+    for (k = 0u; k < LINE_CH; k++) {
+      lc.pos_mm[k] = ((float)k - 3.5f) * BCAR_IR_PITCH_MM;
+      lc.black[k]  = 200.0f;    /* ★默认值只是占位，现场用 IRBLACK / IRWHITE 教一遍 */
+      lc.white[k]  = 3000.0f;
+    }
+    lc.lost_sum_p = BCAR_IR_LOST_SUM_P;
+    line_pos_init(&lc);
+  }
+  uart_dbg_printf("IR 8ch ADC+DMA ready (间距 x100 = %u, 黑白基准待现场标定)\r\n",
+                  (unsigned)(BCAR_IR_PITCH_MM * 100.0f));
+
   /* 进入待机：电机刹车，等发车键或串口命令 */
   (void)fsm_set(FSM_IDLE);
 
@@ -191,6 +213,9 @@ int main(void)
         encoder_poll();
         odom_step(encoder_delta(ENC_L), encoder_delta(ENC_R), has_gyro, dth);
       }
+
+      /* 灰度 → 线偏差（err/visible 都在 s_line_out 里，阶段 6 起给转向环用）*/
+      s_line_out = line_pos_step(adc_ir_raw_all());
 
       /* 跨多拍的命令（陀螺零偏标定）在这里推进 */
       cmdline_tick_5ms();

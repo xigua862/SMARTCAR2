@@ -24,6 +24,7 @@
 /* USER CODE BEGIN Includes */
 #include "bsp_systick.h"
 #include "uart_dbg.h"
+#include "adc_ir.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -209,6 +210,14 @@ void SysTick_Handler(void)
 void USART1_IRQHandler(void)
 {
   uart_dbg_isr_rx();
+}
+
+/**
+  * @brief DMA1 通道1（灰度 ADC）传输完成：只把轮计数 +1，不做任何数据处理
+  */
+void DMA1_Channel1_IRQHandler(void)
+{
+  adc_ir_dma_isr();
 }
 
 /* USER CODE END 1 */

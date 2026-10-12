@@ -62,4 +62,14 @@
 #define BCAR_GYRO_CAL_MS          1000u  /* 上电自检 / GYROZERO 的静止采集时长 */
 #define BCAR_GYRO_CAL_SAMPLES     (BCAR_GYRO_CAL_MS / BCAR_TICK_MS)  /* 采集样本数 */
 
+/* ---- 灰度 8 路（PA0~PA7，模块供 5V、板上 1k/1.5k 分压）---- */
+#define BCAR_IR_PITCH_MM     6.0f   /* ★探头间距，待实测（量相邻两探头的中心距）*/
+#define BCAR_IR_LOST_SUM_P   0.4f   /* Σp 低于它判丢线 */
+#define BCAR_IR_CAL_SAMPLES  20u    /* 现场"教黑白"时每路平均的样本数 */
+
+/* ---- 灰度 8 路（PA0~PA7，模块供 5V、板上 1k/1.5k 分压）---- */
+#define BCAR_IR_PITCH_MM     6.0f   /* ★探头间距，待实测（量相邻两探头的中心距）*/
+#define BCAR_IR_LOST_SUM_P   0.4f   /* Σp 低于它判丢线 */
+#define BCAR_IR_CAL_SAMPLES  20u    /* 现场"教黑白"时每路平均的样本数 */
+
 #endif /* __BCAR_CONFIG_H */

@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+﻿#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
 在电脑上跑全部单元测试（不需要板子、不需要 Keil）。
@@ -29,6 +29,7 @@ TESTS = [
     ("str_util 命令行解析", "Tools/test_parse.c",   ["src/app/str_util.c"],      "src/app",        False),
     ("odom 里程与位姿",     "Tools/test_odom.c",    ["src/middleware/odom.c"],   "src/middleware", True),
     ("heading 陀螺航向",    "Tools/test_heading.c", ["src/middleware/heading.c"], "src/middleware", True),
+    ("line_pos 灰度质心",   "Tools/test_line_pos.c", ["src/middleware/line_pos.c"], "src/middleware", True),
 ]
 
 

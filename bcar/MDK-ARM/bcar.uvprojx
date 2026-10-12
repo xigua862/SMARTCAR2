@@ -502,6 +502,11 @@
         <GroupName>src/drivers</GroupName>
         <Files>
         <File>
+          <FileName>adc_ir.c</FileName>
+          <FileType>1</FileType>
+          <FilePath>../src/drivers/adc_ir.c</FilePath>
+        </File>
+        <File>
           <FileName>buzzer.c</FileName>
           <FileType>1</FileType>
           <FilePath>../src/drivers/buzzer.c</FilePath>
@@ -545,6 +550,11 @@
           <FileName>heading.c</FileName>
           <FileType>1</FileType>
           <FilePath>../src/middleware/heading.c</FilePath>
+        </File>
+        <File>
+          <FileName>line_pos.c</FileName>
+          <FileType>1</FileType>
+          <FilePath>../src/middleware/line_pos.c</FilePath>
         </File>
         <File>
           <FileName>odom.c</FileName>
