@@ -20,4 +20,7 @@ void cmdline_init(void);
 /** @brief 主循环调用：把串口收到的字节攒成行并执行 */
 void cmdline_poll(void);
 
+/** @brief 5ms 拍调用：处理"陀螺零偏标定"这类需要跨多拍采样的命令 */
+void cmdline_tick_5ms(void);
+
 #endif /* __APP_CMDLINE_H */

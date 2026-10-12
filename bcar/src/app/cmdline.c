@@ -14,6 +14,8 @@
 #include "led.h"
 #include "motor.h"
 #include "encoder.h"
+#include "imu660.h"
+#include "heading.h"
 #include "odom.h"
 #include "str_util.h"
 #include "uart_dbg.h"
@@ -24,6 +26,10 @@ volatile uint8_t g_hello_en = 1u;
 
 static char    s_line[LINE_MAX];
 static uint8_t s_len = 0u;
+
+/* 陀螺零偏标定：跨多拍采样，所以状态放在文件作用域 */
+static heading_cal_t s_cal;
+static uint8_t       s_cal_active = 0u;
 
 /* ---------------- 帮助 ---------------- */
 
@@ -188,6 +194,29 @@ static void execute(char *line)
         uart_dbg_printf("OK MODE %s（电机已刹车）\r\n", fsm_state_name(fsm_state()));
     } else if (su_streq(w, "MOTOR") || su_streq(w, "M")) {
         cmd_motor(line);
+    } else if (su_streq(w, "IMU")) {
+        imu660_read();
+        uart_dbg_printf("IMU raw G(%d,%d,%d) A(%d,%d,%d) reads=%u\r\n",
+                        (int)imu660_raw_gyro(IMU_AXIS_X), (int)imu660_raw_gyro(IMU_AXIS_Y),
+                        (int)imu660_raw_gyro(IMU_AXIS_Z),
+                        (int)imu660_raw_acc(IMU_AXIS_X), (int)imu660_raw_acc(IMU_AXIS_Y),
+                        (int)imu660_raw_acc(IMU_AXIS_Z), (unsigned)imu660_read_count());
+        /* dps 用定点打印（迷你 printf 没有 %f）*/
+        uart_dbg_puts("    gyro(dps*10) ");
+        uart_dbg_printf("x=%d y=%d z=%d\r\n",
+                        (int)(imu660_gyro_dps(IMU_AXIS_X) * 10.0f),
+                        (int)(imu660_gyro_dps(IMU_AXIS_Y) * 10.0f),
+                        (int)(imu660_gyro_dps(IMU_AXIS_Z) * 10.0f));
+    } else if (su_streq(w, "GYROZERO")) {
+        heading_cal_begin(&s_cal);
+        s_cal_active = 1u;
+        uart_dbg_printf("GYROZERO 采集中（%u 拍 ≈ %u ms）—— 现在开始别碰车\r\n",
+                        (unsigned)BCAR_GYRO_CAL_SAMPLES, (unsigned)BCAR_GYRO_CAL_MS);
+    } else if (su_streq(w, "HEAD")) {
+        PRINT_FIXED("yaw_deg", heading_yaw_deg());
+        PRINT_FIXED("  bias_z", heading_bias(2));
+        PRINT_FIXED("  dead_zone", heading_dead_zone());
+        uart_dbg_printf("  samples=%u\r\n", (unsigned)heading_samples());
     } else if (su_streq(w, "KEY")) {
         uart_dbg_printf("KEY START(PC13)=%u TRIG(PB0)=%u (1=按住)\r\n",
                         (unsigned)key_is_down(KEY_START), (unsigned)key_is_down(KEY_TRIG));
@@ -221,6 +250,38 @@ static void execute(char *line)
         }
     } else {
         uart_dbg_printf("ERR 不认识的命令: %s（打 HELP 看列表）\r\n", w);
+    }
+}
+
+/* ---------------- 陀螺零偏标定（跨多拍，所以要有状态） ---------------- */
+
+void cmdline_tick_5ms(void)
+{
+    /* 标定期间：每拍采一个静止样本，够了就用均值当零偏 */
+    if (s_cal_active)
+    {
+        float bias[3];
+        imu660_read();
+        heading_cal_push(&s_cal, imu660_gyro_dps(IMU_AXIS_X),
+                                 imu660_gyro_dps(IMU_AXIS_Y),
+                                 imu660_gyro_dps(IMU_AXIS_Z));
+        if (s_cal.n >= (uint32_t)BCAR_GYRO_CAL_SAMPLES)
+        {
+            if (heading_cal_finish(&s_cal, bias, (uint32_t)(BCAR_GYRO_CAL_SAMPLES / 2u)))
+            {
+                heading_set_bias(bias[0], bias[1], bias[2]);
+                uart_dbg_puts("\r\nGYROZERO 完成，零偏(dps) x=");
+                PRINT_FIXED("", bias[0]);
+                PRINT_FIXED(" y", bias[1]);
+                PRINT_FIXED(" z", bias[2]);
+                uart_dbg_puts("\r\n");
+            }
+            else
+            {
+                uart_dbg_puts("\r\nGYROZERO 失败：样本不足（别动它，重来一次）\r\n");
+            }
+            s_cal_active = 0u;
+        }
     }
 }
 

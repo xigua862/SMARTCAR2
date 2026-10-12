@@ -512,6 +512,11 @@
           <FilePath>../src/drivers/encoder.c</FilePath>
         </File>
         <File>
+          <FileName>imu660.c</FileName>
+          <FileType>1</FileType>
+          <FilePath>../src/drivers/imu660.c</FilePath>
+        </File>
+        <File>
           <FileName>key.c</FileName>
           <FileType>1</FileType>
           <FilePath>../src/drivers/key.c</FilePath>
@@ -536,6 +541,11 @@
       <Group>
         <GroupName>src/middleware</GroupName>
         <Files>
+        <File>
+          <FileName>heading.c</FileName>
+          <FileType>1</FileType>
+          <FilePath>../src/middleware/heading.c</FilePath>
+        </File>
         <File>
           <FileName>odom.c</FileName>
           <FileType>1</FileType>

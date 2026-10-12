@@ -32,6 +32,8 @@
 #include "key.h"
 #include "motor.h"
 #include "encoder.h"
+#include "imu660.h"
+#include "heading.h"
 #include "odom.h"
 #include "fsm.h"
 #include "cmdline.h"
@@ -173,11 +175,25 @@ int main(void)
       key_poll();
       buzzer_poll();
 
-      /* 编码器 → 里程：这一拍走了多少，立刻进解算。
-       * ⚠ 现在没有陀螺（阶段 4 才接），所以航向走"差速推算"退路；
-       *   等 IMU 上来后把第三个参数换成 1 并给陀螺的 dθ。 */
-      encoder_poll();
-      odom_step(encoder_delta(ENC_L), encoder_delta(ENC_R), 0u, 0.0f);
+      /* 陀螺 → 航向：有 DRDY 才读（采样时刻由芯片给，抖动小）。
+       * 拿不到新数据就退回"差速推算"，所以 IMU 挂了车还能勉强跑。 */
+      {
+        float    dth = 0.0f;
+        uint8_t  has_gyro = 0u;
+        if (imu660_drdy_take())
+        {
+          imu660_read();
+          dth = heading_step(imu660_gyro_dps(IMU_AXIS_Z),
+                             (float)BCAR_TICK_MS / 1000.0f);
+          has_gyro = 1u;
+        }
+        /* 编码器 → 里程：弧长 + 航向增量 → 位姿 */
+        encoder_poll();
+        odom_step(encoder_delta(ENC_L), encoder_delta(ENC_R), has_gyro, dth);
+      }
+
+      /* 跨多拍的命令（陀螺零偏标定）在这里推进 */
+      cmdline_tick_5ms();
 
       /* --- 按键事件 --- */
       if (key_take_press(KEY_TRIG))          /* PB0：进测试模式 */

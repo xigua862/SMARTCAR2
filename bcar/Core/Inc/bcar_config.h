@@ -57,4 +57,9 @@
 #define BCAR_MM_PER_COUNT    0.1f    /* 【待实测】占位值，标定前别拿它算距离 */
 #define BCAR_TRACK_MM      110.0f    /* 轮距 110mm（实测真值）*/
 
+/* ---- 陀螺（IMU660RC / LSM6DSV16X）---- */
+#define BCAR_GYRO_DEAD_ZONE_DPS   0.3f   /* 死区：减掉零偏后小于它当 0，抑制噪声积分漂移 */
+#define BCAR_GYRO_CAL_MS          1000u  /* 上电自检 / GYROZERO 的静止采集时长 */
+#define BCAR_GYRO_CAL_SAMPLES     (BCAR_GYRO_CAL_MS / BCAR_TICK_MS)  /* 采集样本数 */
+
 #endif /* __BCAR_CONFIG_H */
