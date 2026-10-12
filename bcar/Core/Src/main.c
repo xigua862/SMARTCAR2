@@ -1,4 +1,4 @@
-/* USER CODE BEGIN Header */
+﻿/* USER CODE BEGIN Header */
 /**
   ******************************************************************************
   * @file           : main.c
@@ -28,6 +28,11 @@
 #include "bsp_systick.h"
 #include "uart_dbg.h"
 #include "led.h"
+#include "buzzer.h"
+#include "key.h"
+#include "motor.h"
+#include "fsm.h"
+#include "cmdline.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -100,11 +105,15 @@ int main(void)
    *   1) AFIO  —— 先关 JTAG 保 SWD、把 USART1 重映射到 PB6/PB7
    *   2) 时基  —— DWT 微秒计时（后面 IMU 积分要用）
    *   3) 串口  —— 必须晚于 AFIO，否则重映射没生效，串口是哑巴
-   *   4) 灯    —— 最后初始化，避免上电瞬间乱闪 */
+   *   4) 其它外设（灯/蜂鸣器/按键/电机）*/
   bsp_afio_init();
   bsp_systick_init();
   uart_dbg_init();
   led_init();
+  buzzer_init();
+  key_init();
+  cmdline_init();
+  fsm_init();
 
   /* 上电横幅：把关键事实打出来自证（MAPR 是"重映射有没有生效"的判据）*/
   uart_dbg_printf("\r\n\r\n=== %s ===\r\n", BCAR_FW_VERSION);
@@ -112,7 +121,28 @@ int main(void)
                   bsp_afio_mapr(), bsp_afio_mapr_explain(bsp_afio_mapr()));
   uart_dbg_printf("SYSCLK = %u Hz, PCLK2 = %u Hz, tick = %u ms\r\n",
                   SystemCoreClock, HAL_RCC_GetPCLK2Freq(), BCAR_TICK_MS);
-  uart_dbg_printf("stage1 ready: LED chaser 500ms, hello 1/s\r\n");
+
+  /* 电机 PWM：MOE 是"程序在跑、电机不转"的经典坑，所以把结果打出来 */
+  if (motor_init())
+  {
+    uart_dbg_printf("TIM1 PWM %u Hz, MOE = ON\r\n", BCAR_PWM_FREQ_HZ);
+  }
+  else
+  {
+    uart_dbg_printf("TIM1 MOE = OFF  ← 电机不会转！查 BDTR 写入\r\n");
+    led_on(LED3);
+  }
+
+  /* 进入待机：电机刹车，等发车键或串口命令 */
+  (void)fsm_set(FSM_IDLE);
+
+  /* 上电自检：响一声 + 三灯全亮一下，证明"人机通路"是活的 */
+  buzzer_beep(120u);
+  led_on(LED1); led_on(LED2); led_on(LED3);
+  HAL_Delay(150);
+  led_all_off();
+
+  uart_dbg_puts("stage2 ready: LED chaser 500ms, hello 1/s, 打 HELP 看命令\r\n");
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -122,11 +152,31 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-    /* 5ms 控制节拍：阶段 2 起这里会挂速度环/角度环；阶段 1 先占位 */
+    /* 5ms 控制节拍：阶段 2 起这里挂速度环/角度环；现在先挂"慢活"
+     * （按键消抖、蜂鸣器计时）—— 它们不需要进中断。 */
     if (bsp_tick5ms_take())
     {
-      /* 空着。留着这个位置是为了让"节拍"从第一天起就真实存在。 */
+      key_poll();
+      buzzer_poll();
+
+      /* --- 按键事件 --- */
+      if (key_take_press(KEY_TRIG))          /* PB0：进测试模式 */
+      {
+        (void)fsm_set(FSM_TEST);
+        uart_dbg_printf("\r\n[KEY] PB0 → MODE TEST（电机滑行可用）\r\n");
+        buzzer_beep(60u);
+      }
+      if (key_take_press(KEY_START))         /* PC13：发车 */
+      {
+        /* 运动学还没写（阶段 3），先只切状态 + 报一声，别真跑 */
+        (void)fsm_set(FSM_RUN);
+        uart_dbg_printf("\r\n[KEY] PC13 → MODE RUN（注意：循迹还没接，车不会自己走）\r\n");
+        buzzer_beep(200u);
+      }
     }
+
+    /* 串口命令（行式，收到换行才执行）—— 每圈都查，别等 5ms 拍 */
+    cmdline_poll();
 
     /* 500ms：三色灯走马（亮一只 → 亮下一只 → ... → 全灭 → 循环） */
     if (bsp_timer_expired(&s_t_led, 500u))
@@ -139,11 +189,13 @@ int main(void)
       s_chase = (uint8_t)((s_chase + 1u) % ((uint8_t)LED_COUNT + 1u));
     }
 
-    /* 1000ms：串口心跳。序号必须连续递增 —— 丢一条就说明发送侧有问题 */
-    if (bsp_timer_expired(&s_t_print, 1000u))
+    /* 1000ms：串口心跳。序号必须连续递增 —— 丢一条就说明发送侧有问题。
+     * 调参时用命令 `HELLO 0` 关掉，免得刷屏。 */
+    if (g_hello_en && bsp_timer_expired(&s_t_print, 1000u))
     {
       s_hello++;
-      uart_dbg_printf("hello %u  t=%u ms\r\n", s_hello, bsp_millis());
+      uart_dbg_printf("hello %u  t=%u ms  state=%s\r\n",
+                      s_hello, bsp_millis(), fsm_state_name(fsm_state()));
     }
   }
   /* USER CODE END 3 */

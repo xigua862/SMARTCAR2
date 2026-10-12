@@ -502,14 +502,49 @@
         <GroupName>src/drivers</GroupName>
         <Files>
         <File>
+          <FileName>buzzer.c</FileName>
+          <FileType>1</FileType>
+          <FilePath>../src/drivers/buzzer.c</FilePath>
+        </File>
+        <File>
+          <FileName>key.c</FileName>
+          <FileType>1</FileType>
+          <FilePath>../src/drivers/key.c</FilePath>
+        </File>
+        <File>
           <FileName>led.c</FileName>
           <FileType>1</FileType>
           <FilePath>../src/drivers/led.c</FilePath>
         </File>
         <File>
+          <FileName>motor.c</FileName>
+          <FileType>1</FileType>
+          <FilePath>../src/drivers/motor.c</FilePath>
+        </File>
+        <File>
           <FileName>uart_dbg.c</FileName>
           <FileType>1</FileType>
           <FilePath>../src/drivers/uart_dbg.c</FilePath>
+        </File>
+        </Files>
+      </Group>
+      <Group>
+        <GroupName>src/app</GroupName>
+        <Files>
+        <File>
+          <FileName>cmdline.c</FileName>
+          <FileType>1</FileType>
+          <FilePath>../src/app/cmdline.c</FilePath>
+        </File>
+        <File>
+          <FileName>fsm.c</FileName>
+          <FileType>1</FileType>
+          <FilePath>../src/app/fsm.c</FilePath>
+        </File>
+        <File>
+          <FileName>str_util.c</FileName>
+          <FileType>1</FileType>
+          <FilePath>../src/app/str_util.c</FilePath>
         </File>
         </Files>
       </Group>

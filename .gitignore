@@ -36,6 +36,7 @@ bcar/MDK-ARM/build*.log
 bcar/gen*.txt
 bcar/gen*.log
 bcar/*.log
+bcar/*.exe
 
 # ===== 编辑器 / IDE 自己的东西 =====
 .qoder-cn/
