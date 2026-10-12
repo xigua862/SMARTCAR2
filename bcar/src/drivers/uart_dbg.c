@@ -1,7 +1,15 @@
 ﻿/**
   ******************************************************************************
   * @file    uart_dbg.c
-  * @brief   调试串口实现（寄存器级 USART1 + 环形缓冲 + 简易 printf）
+  * @brief   调试串口实现（寄存器级 USART1 + 环形缓冲 + 简易 printf + TX DMA）
+  *
+  * 三种输出方式，按"会不会挡住控制环"选：
+  *   uart_dbg_printf()      —— 阻塞式：上电横幅/错误信息（量小、不在控制路径）
+  *   uart_dbg_snprintf()    —— 只格式化到内存缓冲，不输出
+  *   uart_dbg_write_dma()   —— 缓冲整段交给 DMA 发，**不阻塞**（遥测 LAP 行用这个）
+  *
+  * 为什么非要 TX DMA：一条 LAP 行约 100 字节，115200 下阻塞发送要 ~9ms，
+  *   等于丢掉两个 5ms 控制拍。发遥测把控制环卡住，是"车没事、数据把它弄坏"的典型。
   ******************************************************************************
   */
 #include "uart_dbg.h"
@@ -18,37 +26,71 @@ static volatile uint16_t s_rx_head = 0u;   /* 写入位置（ISR）*/
 static volatile uint16_t s_rx_tail = 0u;   /* 读取位置（主循环）*/
 static volatile uint32_t s_rx_drop = 0u;   /* 溢出丢弃计数（诊断用）*/
 
+/* ---- 发送：DMA 用的线性缓冲 + 忙标志 ---- */
+static uint8_t           s_tx_buf[BCAR_UART_TX_BUF];
+static volatile uint8_t  s_tx_busy = 0u;
+static volatile uint32_t s_tx_drop = 0u;   /* 上一笔没发完又被塞新的 → 丢笔计数 */
+
 #define UART_RX_MASK  (BCAR_UART_RX_BUF - 1u)
+
+/* ---- 输出落点：0 = 直接写 DR（阻塞）；1 = 追加到内存缓冲（snprintf 用）---- */
+static uint8_t  s_sink_mem = 0u;
+static char    *s_sink_buf = 0;
+static uint16_t s_sink_max = 0u;
+static uint16_t s_sink_len = 0u;
+
+static void putc_out(char c)
+{
+    if (s_sink_mem) {
+        if (s_sink_buf != 0 && s_sink_len < (uint16_t)(s_sink_max - 1u)) {
+            s_sink_buf[s_sink_len] = c;
+            s_sink_len++;
+            s_sink_buf[s_sink_len] = '\0';
+        }
+        return;      /* 缓冲写满就静默截断，绝不返回半截字符串 */
+    }
+    while ((USART1->SR & USART_SR_TXE) == 0u) {
+        /* 等发送寄存器空 */
+    }
+    USART1->DR = (uint8_t)c;
+}
 
 void uart_dbg_init(void)
 {
     uint32_t pclk2;
     uint32_t brr;
 
-    /* 1) 开时钟：USART1 在 APB2 */
+    /* 1) 开时钟：USART1 在 APB2、DMA1 在 AHB */
     RCC->APB2ENR |= RCC_APB2ENR_USART1EN | RCC_APB2ENR_IOPBEN;
+    RCC->AHBENR  |= RCC_AHBENR_DMA1EN;
     (void)RCC->APB2ENR;
+    (void)RCC->AHBENR;
 
     /* 2) 脚的模式：TX = 复用推挽 50MHz；RX = 浮空输入
      *    （AFIO 的重映射由 bsp_afio_init() 负责，这里只管电气特性） */
     bsp_gpio_set_af_pp(GPIOB, 6u, BSP_GPIO_SPEED_50MHZ);
     bsp_gpio_set_input_floating(GPIOB, 7u);
 
-    /* 3) 波特率：BRR = fPCLK2 / 波特率（72MHz / 115200 = 625，正好整数，无误差）
-     *    USARTDIV 的整数部分放 [15:4]、小数部分放 [3:0]。 */
+    /* 3) 波特率：BRR = fPCLK2 / 波特率（72MHz / 115200 = 625，正好整数，无误差） */
     pclk2 = HAL_RCC_GetPCLK2Freq();
-    brr   = (pclk2 * 25u) / (4u * BCAR_UART_BAUD);   /* 等价于 pclk2/baud 的整数写法 */
+    brr   = (pclk2 * 25u) / (4u * BCAR_UART_BAUD);
     USART1->BRR = brr;
 
     /* 4) 8N1 + 收发使能 + 接收中断（RXNE） */
     USART1->CR1 = USART_CR1_TE | USART_CR1_RE | USART_CR1_RXNEIE;
-    USART1->CR2 = 0u;      /* 1 个停止位 */
-    USART1->CR3 = 0u;      /* 无流控 */
+    USART1->CR2 = 0u;
+    USART1->CR3 = 0u;
     USART1->CR1 |= USART_CR1_UE;
 
-    /* 5) 中断优先级：调试串口不参与实时闭环，给最低档（15）即可 */
+    /* 5) 接收中断优先级：调试串口不参与实时闭环，给最低档（15）即可 */
     NVIC_SetPriority(USART1_IRQn, 15u);
     NVIC_EnableIRQ(USART1_IRQn);
+
+    /* 6) TX DMA 通道先备好（USART1_TX 硬连线到 DMA1 通道4）*/
+    DMA1_Channel4->CCR = 0u;
+    NVIC_SetPriority(DMA1_Channel4_IRQn, 8u);
+    NVIC_EnableIRQ(DMA1_Channel4_IRQn);
+    s_tx_busy = 0u;
 }
 
 void uart_dbg_isr_rx(void)
@@ -65,10 +107,11 @@ void uart_dbg_isr_rx(void)
             s_rx_head = nh;
         }
     } else {
-        /* 不是 RXNE（多半是溢出 ORE 或是别的标志）：读一次 DR 清掉，避免死循环 */
-        (void)USART1->DR;
+        (void)USART1->DR;     /* 多半是溢出 ORE：读一次清掉，避免中断里死循环 */
     }
 }
+
+/* ---------------- 阻塞式发送 ---------------- */
 
 void uart_dbg_write(const uint8_t *data, uint16_t len)
 {
@@ -77,10 +120,7 @@ void uart_dbg_write(const uint8_t *data, uint16_t len)
         return;
     }
     for (i = 0u; i < len; i++) {
-        while ((USART1->SR & USART_SR_TXE) == 0u) {
-            /* 等发送寄存器空 —— 阻塞点：控制环里别发长串，
-             * 遥测长串留给后面的 TX DMA 版本（阶段 6）。 */
-        }
+        while ((USART1->SR & USART_SR_TXE) == 0u) { }
         USART1->DR = data[i];
     }
 }
@@ -89,11 +129,67 @@ void uart_dbg_puts(const char *s)
 {
     const char *p = s;
     while (p != 0 && *p != '\0') {
-        while ((USART1->SR & USART_SR_TXE) == 0u) { }
-        USART1->DR = (uint8_t)(*p);
+        putc_out(*p);
         p++;
     }
 }
+
+/* ---------------- DMA 发送（不阻塞） ---------------- */
+
+uint8_t uart_dbg_write_dma(const uint8_t *data, uint16_t len)
+{
+    uint16_t i;
+
+    if (data == 0 || len == 0u || len > BCAR_UART_TX_BUF) {
+        return 0u;
+    }
+    /* 上一笔还在发：不排队，直接丢这一笔并计数。
+     * 遥测"丢一行"远好过"卡住控制环"；正常每圈一行，基本不会撞上。 */
+    if (s_tx_busy) {
+        s_tx_drop++;
+        return 0u;
+    }
+
+    for (i = 0u; i < len; i++) {
+        s_tx_buf[i] = data[i];
+    }
+
+    DMA1_Channel4->CCR   = 0u;
+    DMA1_Channel4->CPAR  = (uint32_t)&USART1->DR;
+    DMA1_Channel4->CMAR  = (uint32_t)s_tx_buf;
+    DMA1_Channel4->CNDTR = len;
+    DMA1_Channel4->CCR   = DMA_CCR_DIR            /* 内存 → 外设 */
+                         | DMA_CCR_MINC           /* 内存地址自增 */
+                         | DMA_CCR_TCIE           /* 发完进中断清忙标志 */
+                         | DMA_CCR_EN;
+
+    USART1->CR3 |= USART_CR3_DMAT;
+    s_tx_busy = 1u;
+    return 1u;
+}
+
+/** @brief DMA1_Channel4 中断入口调用：一笔发完，清忙标志 */
+void uart_dbg_tx_dma_isr(void)
+{
+    if (DMA1->ISR & DMA_ISR_TCIF4) {
+        DMA1->IFCR = DMA_IFCR_CTCIF4;
+        DMA1_Channel4->CCR = 0u;
+        USART1->CR3 &= ~USART_CR3_DMAT;
+        s_tx_busy = 0u;
+    }
+}
+
+uint8_t uart_dbg_tx_busy(void)
+{
+    return s_tx_busy;
+}
+
+uint32_t uart_dbg_tx_drop_count(void)
+{
+    return s_tx_drop;
+}
+
+/* ---------------- 接收 ---------------- */
 
 uint16_t uart_dbg_available(void)
 {
@@ -114,51 +210,36 @@ uint16_t uart_dbg_read(uint8_t *dst, uint16_t max_len)
     return n;
 }
 
-/* ---------------- 简易 printf ---------------- */
+/* ---------------- 格式化：同一套代码，两种落点 ---------------- */
 
-/* 把一个无符号数按 base 输出，返回写入的字符数 */
-static uint16_t put_uint(uint32_t v, uint32_t base, uint8_t upper)
+static void put_uint(uint32_t v, uint32_t base, uint8_t upper)
 {
     char     tmp[11];
     uint16_t n = 0u;
     const char *digits = upper ? "0123456789ABCDEF" : "0123456789abcdef";
 
     if (v == 0u) {
-        while ((USART1->SR & USART_SR_TXE) == 0u) { }
-        USART1->DR = '0';
-        return 1u;
+        putc_out('0');
+        return;
     }
     while (v > 0u && n < (uint16_t)sizeof(tmp)) {
         tmp[n] = digits[v % base];
         v /= base;
         n++;
     }
-    {
-        uint16_t i = n;
-        while (i > 0u) {
-            i--;
-            while ((USART1->SR & USART_SR_TXE) == 0u) { }
-            USART1->DR = (uint8_t)tmp[i];
-        }
+    while (n > 0u) {
+        n--;
+        putc_out(tmp[n]);
     }
-    return n;
 }
 
-static void put_str(const char *s)
+static void fmt_core(const char *fmt, va_list ap)
 {
-    uart_dbg_puts(s);
-}
-
-void uart_dbg_printf(const char *fmt, ...)
-{
-    va_list ap;
     const char *p = fmt;
 
-    va_start(ap, fmt);
     while (p != 0 && *p != '\0') {
         if (*p != '%') {
-            while ((USART1->SR & USART_SR_TXE) == 0u) { }
-            USART1->DR = (uint8_t)(*p);
+            putc_out(*p);
             p++;
             continue;
         }
@@ -168,7 +249,7 @@ void uart_dbg_printf(const char *fmt, ...)
         case 'i': {
             int32_t v = va_arg(ap, int32_t);
             if (v < 0) {
-                put_str("-");
+                putc_out('-');
                 put_uint((uint32_t)(-v), 10u, 0u);
             } else {
                 put_uint((uint32_t)v, 10u, 0u);
@@ -178,24 +259,22 @@ void uart_dbg_printf(const char *fmt, ...)
         case 'u':  put_uint(va_arg(ap, uint32_t), 10u, 0u); break;
         case 'x':  put_uint(va_arg(ap, uint32_t), 16u, 0u); break;
         case 'X':  put_uint(va_arg(ap, uint32_t), 16u, 1u); break;
-        case 'c': {
-            char c = (char)va_arg(ap, int32_t);
-            while ((USART1->SR & USART_SR_TXE) == 0u) { }
-            USART1->DR = (uint8_t)c;
+        case 'c':  putc_out((char)va_arg(ap, int32_t));     break;
+        case 's': {
+            const char *s = va_arg(ap, const char *);
+            while (s != 0 && *s != '\0') {
+                putc_out(*s);
+                s++;
+            }
             break;
         }
-        case 's':  put_str(va_arg(ap, const char *)); break;
-        case '%': {
-            while ((USART1->SR & USART_SR_TXE) == 0u) { }
-            USART1->DR = '%';
-            break;
-        }
+        case '%':  putc_out('%'); break;
         case 'l':
             /* %ld / %lu：本平台 int 和 long 都是 32 位，按同样处理 */
             p++;
             if (*p == 'd') {
                 int32_t v = va_arg(ap, int32_t);
-                if (v < 0) { put_str("-"); put_uint((uint32_t)(-v), 10u, 0u); }
+                if (v < 0) { putc_out('-'); put_uint((uint32_t)(-v), 10u, 0u); }
                 else       { put_uint((uint32_t)v, 10u, 0u); }
             } else {
                 put_uint(va_arg(ap, uint32_t), 10u, 0u);
@@ -204,8 +283,7 @@ void uart_dbg_printf(const char *fmt, ...)
         default:
             /* 不认识的格式：原样打出来，方便发现写错了 */
             if (*p != '\0') {
-                while ((USART1->SR & USART_SR_TXE) == 0u) { }
-                USART1->DR = (uint8_t)(*p);
+                putc_out(*p);
             }
             break;
         }
@@ -213,8 +291,39 @@ void uart_dbg_printf(const char *fmt, ...)
             p++;
         }
     }
+}
+
+void uart_dbg_printf(const char *fmt, ...)
+{
+    va_list ap;
+    s_sink_mem = 0u;
+    va_start(ap, fmt);
+    fmt_core(fmt, ap);
     va_end(ap);
 }
+
+uint16_t uart_dbg_snprintf(char *dst, uint16_t max, const char *fmt, ...)
+{
+    va_list ap;
+
+    if (dst == 0 || max == 0u) {
+        return 0u;
+    }
+    s_sink_mem = 1u;
+    s_sink_buf = dst;
+    s_sink_max = max;
+    s_sink_len = 0u;
+    dst[0] = '\0';
+
+    va_start(ap, fmt);
+    fmt_core(fmt, ap);
+    va_end(ap);
+
+    s_sink_mem = 0u;   /* 用完立刻切回"直连串口"，避免别的调用误写进缓冲 */
+    return s_sink_len;
+}
+
+/* ---------------- 回环自检 ---------------- */
 
 uint8_t uart_dbg_loopback_test(uint32_t timeout_ms)
 {

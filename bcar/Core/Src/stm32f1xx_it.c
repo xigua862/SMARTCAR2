@@ -220,4 +220,12 @@ void DMA1_Channel1_IRQHandler(void)
   adc_ir_dma_isr();
 }
 
+/**
+  * @brief DMA1 通道4（串口 TX）传输完成：清忙标志，让下一笔能发出去
+  */
+void DMA1_Channel4_IRQHandler(void)
+{
+  uart_dbg_tx_dma_isr();
+}
+
 /* USER CODE END 1 */

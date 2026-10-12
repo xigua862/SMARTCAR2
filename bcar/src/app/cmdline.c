@@ -21,6 +21,7 @@
 #include "heading.h"
 #include "odom.h"
 #include "str_util.h"
+#include "telemetry.h"
 #include "uart_dbg.h"
 
 volatile uint8_t g_hello_en = 1u;
@@ -62,6 +63,9 @@ static void print_help(void)
     uart_dbg_puts("  IRBLACK               把当前读数教成全黑基准（车放黑底上执行）\r\n");
     uart_dbg_puts("  IRWHITE               把当前读数教成白线基准（车放白线上执行）\r\n");
     uart_dbg_puts("  IRPOS <间距mm*100>    改探头间距（如 IRPOS 600 = 6.00mm）\r\n");
+    uart_dbg_puts("  LAP                   结算当前圈并发一行 LAP（走 DMA），然后自动进下一圈\r\n");
+    uart_dbg_puts("  LAPSTART              丢弃当前累积，重开一圈\r\n");
+    uart_dbg_puts("  TLM <0|1>             实时行开关（每 100ms 一行 err/vis/v/yaw/lost）\r\n");
     uart_dbg_puts("  LOOPBACK [ms]         TX-RX 短接时的回环自检（默认 200ms）\r\n");
 }
 
@@ -291,6 +295,27 @@ static void execute(char *line)
         } else {
             uart_dbg_puts("ERR 用法: IRPOS <间距mm*100>，例如 IRPOS 600 = 6.00mm\r\n");
         }
+    } else if (su_streq(w, "LAP")) {
+        if (telemetry_finish_lap()) {
+            /* 具体那行由 telemetry 自己用 DMA 发出去，这里只回一句确认 */
+            uart_dbg_printf("OK LAP 已结算（第 %u 圈），下一圈已开始\r\n",
+                            (unsigned)(telemetry_lap_index() - 1u));
+        } else {
+            uart_dbg_printf("ERR 这一圈太短（%u 拍 < %u），没结算；要重开就用 LAPSTART\r\n",
+                            (unsigned)telemetry_lap_ticks(), (unsigned)LAPSTAT_MIN_TICKS);
+        }
+    } else if (su_streq(w, "LAPSTART")) {
+        telemetry_start_lap();
+        uart_dbg_printf("OK 第 %u 圈开始计（累加器已清零）\r\n",
+                        (unsigned)telemetry_lap_index());
+    } else if (su_streq(w, "TLM")) {
+        uint32_t v = 1u;
+        if (arg_u32(line, &v)) {
+            telemetry_set_realtime((v != 0u) ? 1u : 0u);
+        }
+        uart_dbg_printf("OK TLM=%u（%s）\r\n",
+                        (unsigned)telemetry_realtime(),
+                        telemetry_realtime() ? "每 100ms 一行" : "已关");
     } else if (su_streq(w, "KEY")) {
         uart_dbg_printf("KEY START(PC13)=%u TRIG(PB0)=%u (1=按住)\r\n",
                         (unsigned)key_is_down(KEY_START), (unsigned)key_is_down(KEY_TRIG));

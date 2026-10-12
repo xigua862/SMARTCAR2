@@ -23,6 +23,22 @@ void uart_dbg_init(void);
 /** @brief 发送一段字节（阻塞式，逐字节等 TXE；控制环里别用长串）*/
 void uart_dbg_write(const uint8_t *data, uint16_t len);
 
+/**
+  * @brief  用 DMA 发送一段字节（**不阻塞**）
+  * @retval 1 = 已交给 DMA；0 = 上一笔还没发完（这笔被丢掉，进 tx_drop 计数）
+  * @note   遥测行必须用这个：一条 LAP 行 100 字节阻塞发要 9ms = 两个控制拍。
+  */
+uint8_t uart_dbg_write_dma(const uint8_t *data, uint16_t len);
+
+/** @brief DMA1_Channel4 中断入口调用 */
+void uart_dbg_tx_dma_isr(void);
+
+/** @brief 上一笔 DMA 是否还在发 */
+uint8_t uart_dbg_tx_busy(void);
+
+/** @brief 因上一笔没发完而丢弃的笔数（诊断：长期不为 0 说明发太密了）*/
+uint32_t uart_dbg_tx_drop_count(void);
+
 /** @brief 发送字符串（不含结尾 0）*/
 void uart_dbg_puts(const char *s);
 
@@ -32,6 +48,12 @@ void uart_dbg_puts(const char *s);
   *         不返回，所以逻辑上等价于"发完为止"。
   */
 void uart_dbg_printf(const char *fmt, ...);
+
+/**
+  * @brief  格式化到内存缓冲（不输出）；返回写入长度（超长静默截断）
+  * @note   遥测行先 snprintf 到缓冲、再 write_dma 发出去，就完全不挡控制环。
+  */
+uint16_t uart_dbg_snprintf(char *dst, uint16_t max, const char *fmt, ...);
 
 /** @brief 从接收环形缓冲取数据，返回实际取出字节数 */
 uint16_t uart_dbg_read(uint8_t *dst, uint16_t max_len);

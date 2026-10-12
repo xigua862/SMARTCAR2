@@ -22,6 +22,7 @@
 /* ---- 串口 ---- */
 #define BCAR_UART_BAUD       115200u
 #define BCAR_UART_RX_BUF     256u    /* 接收环形缓冲字节数（必须是 2 的幂）*/
+#define BCAR_UART_TX_BUF     192u    /* TX DMA 缓冲：够装一条 LAP 行（约 100~140 字节）*/
 
 /* ---- 状态灯极性 ----
  * 板上 3 只 LED：GPIO → 470Ω → LED → GND，所以「输出高 = 亮」。

@@ -18,6 +18,7 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "usart.h"
 #include "gpio.h"
 
 /* Private includes ----------------------------------------------------------*/
@@ -39,6 +40,7 @@
 #include "odom.h"
 #include "fsm.h"
 #include "cmdline.h"
+#include "telemetry.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -110,6 +112,7 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
+  MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
   /* 初始化顺序有讲究，别调换：
    *   1) AFIO  —— 先关 JTAG 保 SWD、把 USART1 重映射到 PB6/PB7
@@ -171,6 +174,9 @@ int main(void)
   uart_dbg_printf("IR 8ch ADC+DMA ready (间距 x100 = %u, 黑白基准待现场标定)\r\n",
                   (unsigned)(BCAR_IR_PITCH_MM * 100.0f));
 
+  /* 遥测：每圈结算 + 可选实时行（都走 TX DMA）*/
+  telemetry_init();
+
   /* 进入待机：电机刹车，等发车键或串口命令 */
   (void)fsm_set(FSM_IDLE);
 
@@ -214,8 +220,16 @@ int main(void)
         odom_step(encoder_delta(ENC_L), encoder_delta(ENC_R), has_gyro, dth);
       }
 
-      /* 灰度 → 线偏差（err/visible 都在 s_line_out 里，阶段 6 起给转向环用）*/
+      /* 灰度 → 线偏差（err/visible 都在 s_line_out 里，阶段 7 起给转向环用）*/
       s_line_out = line_pos_step(adc_ir_raw_all());
+
+      /* 遥测：把这拍的数据喂进本圈统计（顺带按需发实时行）*/
+      telemetry_tick(s_line_out.err_mm, s_line_out.visible,
+                     odom_get().v_mm_s,
+                     /* 本拍弧长用编码器差分直接算，避免再读一次 odom 内部量 */
+                     (float)(encoder_delta(ENC_L) + encoder_delta(ENC_R)) * 0.5f
+                       * BCAR_MM_PER_COUNT,
+                     heading_yaw_deg());
 
       /* 跨多拍的命令（陀螺零偏标定）在这里推进 */
       cmdline_tick_5ms();
