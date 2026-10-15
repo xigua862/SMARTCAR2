@@ -24,6 +24,7 @@ static int8_t     s_line_sign = BCAR_CTRL_LINE_SIGN;   /* 线环方向：err 反
 static speed_pi_t s_vel;
 static float      s_v_target = BCAR_V_TARGET_MS;
 static uint8_t    s_vel_on   = (uint8_t)BCAR_VEL_ON;
+static uint8_t    s_str_on   = (uint8_t)BCAR_STR_ON;   /* 陀螺直行开关（用户要求先关掉）*/
 static uint32_t   s_vramp    = 0u;    /* 起步时目标速度的斜坡计数 */
 #define CTRL_VRAMP_TICKS  ((uint32_t)(BCAR_V_RAMP_MS / BCAR_TICK_MS))
 static uint8_t    s_vis_run = 0u;     /* 连续多少拍"看得见线"（去抖用）*/
@@ -99,8 +100,12 @@ void control_enter_run(float yaw_deg)
     angle_pd_init(&s_pd, s_pd.kp, s_pd.kd, s_pd.steer_max);   /* 清微分历史 */
     /* ★进 RUN 先进"直行"：发车点在线上、但万一没压准 / 线上有反光，
      * 车也能朝 S 直着出去，看到线立刻交回循迹环（见 control_step）。 */
-    straight_set_target(&s_str, yaw_deg);                     /* 目标航向 = 发车方向 */
-    s_mode    = CTRL_MODE_STRAIGHT;
+    if (s_str_on != 0u) {
+        straight_set_target(&s_str, yaw_deg);                 /* 目标航向 = 发车方向 */
+        s_mode = CTRL_MODE_STRAIGHT;
+    } else {
+        s_mode = CTRL_MODE_LINE;      /* ★纯循迹模式：发车就直接交给灰度环，不做航向保持 */
+    }
     s_lost    = 0u;
     s_running = 1u;
     s_kick_ticks = CTRL_KICK_TICKS;                           /* 起步那一脚（速度环关时用）*/
@@ -124,6 +129,19 @@ void control_set_base(uint16_t mag)
 uint16_t control_base(void)
 {
     return s_base;
+}
+
+void control_set_str_on(uint8_t on)
+{
+    s_str_on = (on != 0u) ? 1u : 0u;
+    if (s_str_on == 0u) {
+        s_mode = CTRL_MODE_LINE;
+    }
+}
+
+uint8_t control_str_on(void)
+{
+    return s_str_on;
 }
 
 void control_set_speed(float v_mm_s)
@@ -247,15 +265,23 @@ void control_step(float err_mm, uint8_t visible, float yaw_deg, float v_mm_s)
     s_vis_run = 0u;
     if (s_invis_run < 255u) { s_invis_run++; }
 
-    if (s_mode != CTRL_MODE_STRAIGHT && s_invis_run >= CTRL_INVIS_TICKS) {
-        /* 切的这一刻把"当前航向"定成目标 —— 也就是"照丢线那一瞬间的朝向直着走" */
-        straight_set_target(&s_str, yaw_deg);
-        s_mode = CTRL_MODE_STRAIGHT;
+    if (s_str_on != 0u) {
+        /* 陀螺直行：保持"丢线那一刻"的航向直着找线 */
+        if (s_mode != CTRL_MODE_STRAIGHT && s_invis_run >= CTRL_INVIS_TICKS) {
+            straight_set_target(&s_str, yaw_deg);
+            s_mode = CTRL_MODE_STRAIGHT;
+        }
+    } else {
+        s_mode = CTRL_MODE_LINE;      /* 纯循迹模式：不做航向保持 */
     }
 
     if (s_lost <= (uint32_t)(BCAR_STR_LOST_MS / BCAR_TICK_MS)) {
-        /* 容忍期内：**不刹车**，保持航向直着走找线（速度打折，找线别冲）*/
-        drive(base_effective(v_mm_s) * BCAR_STR_LOST_BASE_P, straight_step(&s_str, yaw_deg, CTRL_DT_S));
+        /* 容忍期内：不刹车，直着走一段找线。
+         * ★陀螺开着时用航向保持纠偏；关掉时转向量给 0（就是"两轮同速直着走"）。 */
+        float steer = (s_str_on != 0u)
+                      ? straight_step(&s_str, yaw_deg, CTRL_DT_S)
+                      : 0.0f;
+        drive(base_effective(v_mm_s) * BCAR_STR_LOST_BASE_P, steer);
     } else {
         /* 撑不住了：停车。宁可停在赛道上等人捡，也别瞎冲。
          * ★刹停之后把"起步那一脚"重新装上 —— 再起步时还得踹一脚才动得了。 */

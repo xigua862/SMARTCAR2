@@ -389,9 +389,9 @@ static void execute(char *line)
                         (int)(kp * 100.0f), (int)(kd * 100.0f),
                         control_mode_name(),
                         (unsigned)control_lost_ms(), (unsigned)control_lost_holding());
-        uart_dbg_printf("SPD v_x10=%d mm/s vel_out=%d vel_on=%u\r\n",
+        uart_dbg_printf("SPD v_x10=%d mm/s vel_out=%d vel_on=%u gyro=%u\r\n",
                         (int)(control_v_target() * 10.0f), (int)control_vel_out(),
-                        (unsigned)control_vel_on());
+                        (unsigned)control_vel_on(), (unsigned)control_str_on());
         uart_dbg_printf("STRAIGHT skp_x100=%d skd_x100=%d sign=%d target_x10=%d deg\r\n",
                         (int)(skp * 100.0f), (int)(skd * 100.0f), (int)ssign, (int)(stgt * 10.0f));
     } else if (su_streq(w, "SGAIN")) {
@@ -410,6 +410,16 @@ static void execute(char *line)
             } else {
                 uart_dbg_puts("ERR 增益必须是整数（按 1/100 记）\r\n");
             }
+        }
+    } else if (su_streq(w, "GYRO")) {
+        /* 陀螺直行开关：1 = 开（丢线时用陀螺保持航向找线）；0 = 关（纯灰度循迹）*/
+        uint32_t v = 1u;
+        if (arg_u32(line, &v) && v <= 1u) {
+            control_set_str_on((uint8_t)v);
+            uart_dbg_printf("OK GYRO=%u（%s）\r\n", (unsigned)v,
+                            v ? "丢线时用陀螺保持航向" : "纯灰度循迹，丢线就直着走一段再刹");
+        } else {
+            uart_dbg_puts("ERR 用法: GYRO <0|1>  （0=纯循迹 1=开陀螺直行）\r\n");
         }
     } else if (su_streq(w, "SPD")) {
         /* 速度环目标速度（mm/s）：0 = 关掉速度环、退回手动 BASE */

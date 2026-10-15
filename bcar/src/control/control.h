@@ -47,6 +47,10 @@ uint16_t control_base(void);
 /** @brief 速度环：设目标速度（mm/s）。传 0 = 关掉速度环、退回手动 BASE */
 void control_set_speed(float v_mm_s);
 float control_v_target(void);
+/** @brief 陀螺直行开关：1 = 开（找不到线时用陀螺保持航向）；0 = 关（纯循迹）*/
+void control_set_str_on(uint8_t on);
+uint8_t control_str_on(void);
+
 /** @brief 速度环当前输出（诊断/串口看）*/
 float control_vel_out(void);
 /** @brief 速度环是否开着 */
