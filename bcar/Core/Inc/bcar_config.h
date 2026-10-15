@@ -198,7 +198,11 @@
 #define BCAR_VEL_KP          0.15f    /* P：mag / (mm/s)（原来是 0.6）*/
 #define BCAR_VEL_KI          0.4f     /* I：mag / mm（原来是 2.0）*/
 #define BCAR_VEL_MIN_MAG    380u      /* 输出下限：实测这车低位推不动，别让它白绕积分 */
-#define BCAR_VEL_MAX_MAG   1000u
+#define BCAR_VEL_MAX_MAG    700u      /* 基础占空比上限：再高就是"车在拧"而不是在跑 */
+/* ★大转向时冻结速度环的门限（占当前输出的比例）：
+ * 转向会让"内侧轮"（=左轮=编码器那一路）变慢甚至停住，速度环会把车当成"慢了"猛加油
+ * ⇒ 正反馈 ⇒ 越拐越死（用户："还是容易卡死，同样原因"）。超过这个比例就不让速度环动。 */
+#define BCAR_VEL_HOLD_FRAC  0.25f
 #define BCAR_V_TARGET_MS    300.0f    /* 巡航目标速度 mm/s（慢点先：37m 一圈 ≈ 2 分钟）*/
 #define BCAR_V_RAMP_MS      600u      /* 起步时目标速度 0→目标 的斜坡（软起，压翘头）*/
 #define BCAR_VEL_ON             1     /* 1 = 用速度环（推荐）；0 = 退回"斜坡 + 手动 BASE" */

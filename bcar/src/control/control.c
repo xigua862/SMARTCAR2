@@ -54,11 +54,19 @@ static uint8_t    s_invis_run = 0u;   /* 连续多少拍"看不见线"*/
   * ★只在这里递减计数 —— 刹车那一支不会调它，所以"刹住不动"时不会白消耗，
   *   等真要走的时候才起坡。
   */
-static float base_effective(float v_mm_s)
+static float base_effective(float v_mm_s, float steer)
 {
     /* ---- 速度环优先：自动补偿摩擦，目标速度带 600ms 斜坡（软起）---- */
     if (s_vel_on != 0u) {
         float vt = s_v_target;
+        float sa = (steer < 0.0f) ? -steer : steer;
+
+        /* ★大转向 ⇒ 冻结速度环（保持上次输出）：
+         * 内侧轮就是编码器那一路，转向把它拖慢/停住，速度环会误判成"车慢了"猛加油
+         * ⇒ 正反馈 ⇒ 卡死。转弯期间让速度环休息，是级联控制的标准做法。 */
+        if (sa > BCAR_VEL_HOLD_FRAC * s_vel.out) {
+            return s_vel.out;
+        }
         if (s_vramp < CTRL_VRAMP_TICKS) {
             s_vramp++;
             vt = s_v_target * (float)s_vramp / (float)CTRL_VRAMP_TICKS;
@@ -293,7 +301,10 @@ void control_step(float err_mm, uint8_t visible, float yaw_deg, float v_mm_s)
         }
         s_lost = 0u;
         /* err 乘上方向开关：翻它就能把"朝远离线拐"改成"朝线拐" */
-        drive(base_effective(v_mm_s), angle_pd_step(&s_pd, err_mm * (float)s_line_sign));
+        {
+            float steer = angle_pd_step(&s_pd, err_mm * (float)s_line_sign);
+            drive(base_effective(v_mm_s, steer), steer);
+        }
         return;
     }
 
@@ -318,7 +329,7 @@ void control_step(float err_mm, uint8_t visible, float yaw_deg, float v_mm_s)
         float steer = (s_str_on != 0u)
                       ? straight_step(&s_str, yaw_deg, CTRL_DT_S)
                       : 0.0f;
-        drive(base_effective(v_mm_s) * BCAR_STR_LOST_BASE_P, steer);
+        drive(base_effective(v_mm_s, steer) * BCAR_STR_LOST_BASE_P, steer);
     } else {
         /* 撑不住了：停车。宁可停在赛道上等人捡，也别瞎冲。
          * ★刹停之后把"起步那一脚"重新装上 —— 再起步时还得踹一脚才动得了。 */
