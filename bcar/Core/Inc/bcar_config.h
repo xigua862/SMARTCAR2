@@ -136,9 +136,15 @@
 
 /* ---- 循迹控制（阶段 7 起步版：只闭环转向，速度先固定）---- */
 #define BCAR_CTRL_BASE_MAG     350u    /* 起步速度：先慢。能跑通一圈再往上提 */
-#define BCAR_CTRL_KP           25.0f   /* 转向 P：mag / mm（误差 10mm → 转向量 250）*/
-#define BCAR_CTRL_KD            3.0f   /* 转向 D：mag / mm（抑制过冲）*/
-#define BCAR_CTRL_STEER_MAX   600.0f   /* 转向量限幅 */
+/* ★2026-10-15 深夜下调：原来是 25/3，那是按"err 用占位间距 6mm"定的；间距改成实测
+ * 11mm 后 err 数值大了近一倍 ⇒ 同一个 kp 打出的转向量翻倍 ⇒ 现场"瞎甩头"。
+ * 现在 10/1.5 起步（10mm 偏差 → 转向量 100，约为 BASE 的 1/3），现场用 `PD` 命令往上找。 */
+#define BCAR_CTRL_KP           10.0f   /* 转向 P：mag / mm */
+#define BCAR_CTRL_KD            1.5f   /* 转向 D：mag / mm */
+#define BCAR_CTRL_STEER_MAX   350.0f   /* 转向量限幅（≈BASE：最狠也就是内侧轮停住，不许反转）*/
+/* 循迹环方向：1 = 默认（err>0 = 线在右 ⇒ 往右打）。车上如果发现"朝远离线的方向拐"，
+ * 台上敲 `LSDIR 2` 翻过来，不用重烧。 */
+#define BCAR_CTRL_LINE_SIGN      1
 
 /* ---- 过 S / 到 G 停车（2026-10-15 加，用户口径：过 S 触发一次、到 G 再触发就停）----
  * 判据与常数都有实测量撑腰（见 zebra.h）：斑马线上 7 路白、白区跨度 77mm、sum_p≈6.4；

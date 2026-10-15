@@ -408,6 +408,15 @@ static void execute(char *line)
                 uart_dbg_puts("ERR 增益必须是整数（按 1/100 记）\r\n");
             }
         }
+    } else if (su_streq(w, "LSDIR")) {
+        uint32_t v = 1u;
+        if (arg_u32(line, &v) && (v == 1u || v == 2u)) {
+            int8_t sign = (v == 1u) ? (int8_t)1 : (int8_t)-1;
+            control_set_line_sign(sign);
+            uart_dbg_printf("OK LSDIR=%d（循迹环方向；1=默认 2=反过来）\r\n", (int)sign);
+        } else {
+            uart_dbg_puts("ERR 用法: LSDIR <1|2>  （车朝远离线的方向拐 ⇒ 试 2）\r\n");
+        }
     } else if (su_streq(w, "SDIR")) {
         uint32_t v = 1u;
         if (arg_u32(line, &v) && (v == 1u || v == 2u)) {

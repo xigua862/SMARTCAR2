@@ -17,12 +17,20 @@ static uint16_t   s_base = BCAR_CTRL_BASE_MAG;
 static uint32_t   s_lost = 0u;        /* 已经连续多少拍看不到线 */
 static uint8_t    s_running = 0u;
 static ctrl_mode_t s_mode = CTRL_MODE_LINE;
-static uint32_t   s_kick_ticks = 0u;  /* >0 = 起步助推中（还剩几拍）*/
+static uint32_t   s_kick_ticks = 0u;  /* >0 = 起步斜坡中（还剩几拍）*/
+static int8_t     s_line_sign = BCAR_CTRL_LINE_SIGN;   /* 线环方向：err 反了就翻 */
+static uint8_t    s_vis_run = 0u;     /* 连续多少拍"看得见线"（去抖用）*/
+static uint8_t    s_invis_run = 0u;   /* 连续多少拍"看不见线"*/
+/* 模式切换去抖：visible 在阈值附近抖动时，不许每拍都切模式 —— 那会让转向量在两个环之间跳，
+ * 现场表现就是"瞎甩头"。 */
 
 /* 读秒那 3 秒的节拍是 5ms，直行环的 D 项要用秒 */
 #define CTRL_DT_S  ((float)BCAR_TICK_MS / 1000.0f)
-/* 起步助推时长（拍） */
+/* 起步斜坡时长（拍） */
 #define CTRL_KICK_TICKS  ((uint32_t)(BCAR_CTRL_KICK_MS / BCAR_TICK_MS))
+/* 模式切换去抖：连续这么多拍才切（15ms / 40ms），防止 visible 抖动导致来回切 */
+#define CTRL_VIS_TICKS    3u
+#define CTRL_INVIS_TICKS  8u
 
 /**
   * @brief 这一拍该用多大速度基准：起步那一下是"斜坡软起"，之后回 BASE
@@ -62,6 +70,8 @@ void control_init(void)
     s_running = 0u;
     s_mode    = CTRL_MODE_LINE;
     s_kick_ticks = 0u;
+    s_vis_run = 0u;
+    s_invis_run = 0u;
 }
 
 void control_enter_run(float yaw_deg)
@@ -97,6 +107,16 @@ uint16_t control_base(void)
 void control_set_pd(float kp, float kd)
 {
     angle_pd_set(&s_pd, kp, kd);
+}
+
+void control_set_line_sign(int8_t sign)
+{
+    s_line_sign = (sign < 0) ? (int8_t)-1 : (int8_t)1;
+}
+
+int8_t control_line_sign(void)
+{
+    return s_line_sign;
 }
 
 void control_get_pd(float *kp, float *kd)
@@ -161,21 +181,26 @@ void control_step(float err_mm, uint8_t visible, float yaw_deg)
     }
 
     if (visible) {
+        s_invis_run = 0u;
+        if (s_vis_run < 255u) { s_vis_run++; }
         /* ---- 看得到线：循迹环接管 ---- */
-        if (s_mode != CTRL_MODE_LINE) {
+        if (s_mode != CTRL_MODE_LINE && s_vis_run >= CTRL_VIS_TICKS) {
             /* 刚从直行切过来：清一下 PD 历史，免得拿"很久以前的偏差"算出一个巨大微分 */
             angle_pd_reset(&s_pd);
             s_mode = CTRL_MODE_LINE;
         }
         s_lost = 0u;
-        drive(base_effective(), angle_pd_step(&s_pd, err_mm));
+        /* err 乘上方向开关：翻它就能把"朝远离线拐"改成"朝线拐" */
+        drive(base_effective(), angle_pd_step(&s_pd, err_mm * (float)s_line_sign));
         return;
     }
 
     /* ---- 看不到线：陀螺直行找线 ---- */
     s_lost++;
+    s_vis_run = 0u;
+    if (s_invis_run < 255u) { s_invis_run++; }
 
-    if (s_mode != CTRL_MODE_STRAIGHT) {
+    if (s_mode != CTRL_MODE_STRAIGHT && s_invis_run >= CTRL_INVIS_TICKS) {
         /* 切的这一刻把"当前航向"定成目标 —— 也就是"照丢线那一瞬间的朝向直着走" */
         straight_set_target(&s_str, yaw_deg);
         s_mode = CTRL_MODE_STRAIGHT;

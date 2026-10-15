@@ -48,6 +48,10 @@ uint16_t control_base(void);
 void control_set_pd(float kp, float kd);
 void control_get_pd(float *kp, float *kd);
 
+/** @brief 现场翻"循迹环方向"（±1）—— 车朝远离线的方向拐时用 */
+void control_set_line_sign(int8_t sign);
+int8_t control_line_sign(void);
+
 /** @brief 现场改直行环增益（kp [mag/度]、kd [mag/(度/秒)]）*/
 void control_set_straight(float kp, float kd);
 void control_get_straight(float *kp, float *kd, int8_t *sign, float *target);
