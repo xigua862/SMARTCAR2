@@ -71,9 +71,11 @@ void uart_dbg_init(void)
     bsp_gpio_set_af_pp(GPIOB, 6u, BSP_GPIO_SPEED_50MHZ);
     bsp_gpio_set_input_floating(GPIOB, 7u);
 
-    /* 3) 波特率：BRR = fPCLK2 / 波特率（72MHz / 115200 = 625，正好整数，无误差） */
+    /* 3) 波特率：OVER8=0 时 BRR = fPCLK2 / 波特率（低 4 位是小数部分，所以不能乘 16 之外的系数）。
+     *    ★2026-10-15 修正：原式 (pclk2*25)/(4*baud) 会算出 3906（实际 18432 波特，串口全是乱码），
+     *    正确值 72MHz/115200 = 625。四舍五入用 (pclk2 + baud/2)/baud。 */
     pclk2 = HAL_RCC_GetPCLK2Freq();
-    brr   = (pclk2 * 25u) / (4u * BCAR_UART_BAUD);
+    brr   = (pclk2 + (BCAR_UART_BAUD / 2u)) / BCAR_UART_BAUD;
     USART1->BRR = brr;
 
     /* 4) 8N1 + 收发使能 + 接收中断（RXNE） */
@@ -212,25 +214,61 @@ uint16_t uart_dbg_read(uint8_t *dst, uint16_t max_len)
 
 /* ---------------- 格式化：同一套代码，两种落点 ---------------- */
 
-static void put_uint(uint32_t v, uint32_t base, uint8_t upper)
+/* 按宽度输出无符号数：zero=1 用 '0' 左补，否则用空格。
+ * ★必须支持宽度：本项目的横幅就用了 "%08X"，不支持会让 va_arg 错位（曾经因此上电就 HardFault）。 */
+static void put_uint_w(uint32_t v, uint32_t base, uint8_t upper, int width, int zero)
 {
     char     tmp[11];
     uint16_t n = 0u;
     const char *digits = upper ? "0123456789ABCDEF" : "0123456789abcdef";
 
     if (v == 0u) {
-        putc_out('0');
-        return;
+        tmp[n++] = '0';
+    } else {
+        while (v > 0u && n < (uint16_t)sizeof(tmp)) {
+            tmp[n] = digits[v % base];
+            v /= base;
+            n++;
+        }
     }
-    while (v > 0u && n < (uint16_t)sizeof(tmp)) {
-        tmp[n] = digits[v % base];
-        v /= base;
-        n++;
+    while ((int)n < width) {          /* 左补齐 */
+        putc_out(zero ? '0' : ' ');
+        width--;
     }
     while (n > 0u) {
         n--;
         putc_out(tmp[n]);
     }
+}
+
+/* 有符号：负号先打，数字本体按 (width-1) 补 */
+static void put_signed_w(int32_t v, int width, int zero)
+{
+    if (v < 0) {
+        putc_out('-');
+        put_uint_w((uint32_t)0u - (uint32_t)v, 10u, 0u, (width > 0) ? width - 1 : 0, zero);
+    } else {
+        put_uint_w((uint32_t)v, 10u, 0u, width, zero);
+    }
+}
+
+/* 解析 "%" 之后的 [0][宽度] 前缀，返回宽度（0 = 没写） */
+static int fmt_parse_width(const char **pp, int *zero)
+{
+    const char *p = *pp;
+    int w = 0;
+
+    *zero = 0;
+    if (*p == '0') {
+        *zero = 1;
+        p++;
+    }
+    while (*p >= '0' && *p <= '9') {
+        w = w * 10 + (int)(*p - '0');
+        p++;
+    }
+    *pp = p;
+    return w;
 }
 
 static void fmt_core(const char *fmt, va_list ap)
@@ -243,49 +281,52 @@ static void fmt_core(const char *fmt, va_list ap)
             p++;
             continue;
         }
-        p++;
-        switch (*p) {
-        case 'd':
-        case 'i': {
-            int32_t v = va_arg(ap, int32_t);
-            if (v < 0) {
-                putc_out('-');
-                put_uint((uint32_t)(-v), 10u, 0u);
-            } else {
-                put_uint((uint32_t)v, 10u, 0u);
+        p++;                                   /* 跳过 '%' */
+        {
+            int zero  = 0;
+            int width = fmt_parse_width(&p, &zero);   /* ★解析 %[0][宽度] */
+
+            switch (*p) {
+            case 'd':
+            case 'i':  put_signed_w(va_arg(ap, int32_t), width, zero);              break;
+            case 'u':  put_uint_w(va_arg(ap, uint32_t), 10u, 0u, width, zero);      break;
+            case 'x':  put_uint_w(va_arg(ap, uint32_t), 16u, 0u, width, zero);      break;
+            case 'X':  put_uint_w(va_arg(ap, uint32_t), 16u, 1u, width, zero);      break;
+            case 'c':  putc_out((char)va_arg(ap, int32_t));                         break;
+            case 's': {
+                const char *s = va_arg(ap, const char *);
+                const char *q = s;
+                int len = 0;
+                while (q != 0 && *q != '\0') { len++; q++; }      /* 先数长度，好补空格 */
+                while (len < width) { putc_out(' '); width--; }
+                while (s != 0 && *s != '\0') { putc_out(*s); s++; }
+                break;
             }
-            break;
-        }
-        case 'u':  put_uint(va_arg(ap, uint32_t), 10u, 0u); break;
-        case 'x':  put_uint(va_arg(ap, uint32_t), 16u, 0u); break;
-        case 'X':  put_uint(va_arg(ap, uint32_t), 16u, 1u); break;
-        case 'c':  putc_out((char)va_arg(ap, int32_t));     break;
-        case 's': {
-            const char *s = va_arg(ap, const char *);
-            while (s != 0 && *s != '\0') {
-                putc_out(*s);
-                s++;
+            case '%':  putc_out('%'); break;
+            case 'l':
+                /* %ld / %lu：本平台 int 和 long 都是 32 位，按同样处理 */
+                p++;
+                {
+                    int z2 = 0;
+                    int w2 = fmt_parse_width(&p, &z2);
+                    if (*p == 'd' || *p == 'i') {
+                        put_signed_w(va_arg(ap, int32_t), w2, z2);
+                    } else if (*p == 'x') {
+                        put_uint_w(va_arg(ap, uint32_t), 16u, 0u, w2, z2);
+                    } else if (*p == 'X') {
+                        put_uint_w(va_arg(ap, uint32_t), 16u, 1u, w2, z2);
+                    } else {
+                        put_uint_w(va_arg(ap, uint32_t), 10u, 0u, w2, z2);
+                    }
+                }
+                break;
+            default:
+                /* 不认识的格式：原样打出来，方便发现写错了 */
+                if (*p != '\0') {
+                    putc_out(*p);
+                }
+                break;
             }
-            break;
-        }
-        case '%':  putc_out('%'); break;
-        case 'l':
-            /* %ld / %lu：本平台 int 和 long 都是 32 位，按同样处理 */
-            p++;
-            if (*p == 'd') {
-                int32_t v = va_arg(ap, int32_t);
-                if (v < 0) { putc_out('-'); put_uint((uint32_t)(-v), 10u, 0u); }
-                else       { put_uint((uint32_t)v, 10u, 0u); }
-            } else {
-                put_uint(va_arg(ap, uint32_t), 10u, 0u);
-            }
-            break;
-        default:
-            /* 不认识的格式：原样打出来，方便发现写错了 */
-            if (*p != '\0') {
-                putc_out(*p);
-            }
-            break;
         }
         if (*p != '\0') {
             p++;

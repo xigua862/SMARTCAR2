@@ -25,6 +25,7 @@
 #include "bsp_systick.h"
 #include "uart_dbg.h"
 #include "adc_ir.h"
+#include "imu660.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -226,6 +227,19 @@ void DMA1_Channel1_IRQHandler(void)
 void DMA1_Channel4_IRQHandler(void)
 {
   uart_dbg_tx_dma_isr();
+}
+
+/**
+  * @brief EXTI 线 [9:5]：IMU 的 DRDY（PB8 → EXTI8）走的这一条
+  *
+  * ★2026-10-15 补：原来**这个中断服务函数根本没写**。imu_drdy_exti_setup() 在 NVIC 里
+  * 放开了 EXTI9_5，却没人接 ⇒ 一旦 IMU 拉 DRDY，CPU 就跳进启动文件的 Default_Handler
+  * （死循环），整机卡死（连 hello 心跳都停）。
+  * 修 IMU 初始化之前从不产生 DRDY，所以这个坑一直没暴露。
+  */
+void EXTI9_5_IRQHandler(void)
+{
+  imu660_drdy_isr();   /* 里面会判 EXTI->PR 的 bit8 并写 1 清标志 */
 }
 
 /* USER CODE END 1 */

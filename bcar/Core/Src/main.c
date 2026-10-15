@@ -178,6 +178,21 @@ int main(void)
   /* 遥测：每圈结算 + 可选实时行（都走 TX DMA）*/
   telemetry_init();
 
+  /* ★IMU（SPI2 + DRDY 外部中断）
+   * 2026-10-15 补：之前**漏了 imu660_init() 这一句** ⇒ SPI2 从没被使能（SPE=0），
+   * 一敲 IMU 命令就死在 spi2_xfer 里等 RXNE（整机假死、连 hello 心跳都停）。
+   * 上电自证：读得到 WHO_AM_I 才算过；读不到要吼一声，别静默带病跑。 */
+  if (imu660_init())
+  {
+    uart_dbg_printf("IMU660RC OK (WHO_AM_I 已读到)\r\n");
+  }
+  else
+  {
+    uart_dbg_printf("ERR IMU660RC 无应答 —— 查 SPI2 接线 / CS / 模块 3.3V\r\n");
+    buzzer_beep(300u);
+  }
+  heading_init(BCAR_GYRO_DEAD_ZONE_DPS);
+
   /* 进入待机：电机刹车，等发车键或串口命令 */
   (void)fsm_set(FSM_IDLE);
 

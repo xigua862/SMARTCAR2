@@ -58,10 +58,13 @@ uint8_t encoder_init(void)
     bsp_gpio_set_input_floating(GPIOB, 5u);    /* R_B */
 
     /* 3) ⚠ 部分重映射：这两句不写，脚就还连着 JTAG/别的功能，计数永远是 0。
-     *    TIM2 部分重映射 1 → CH1/CH2 挪到 PA15/PB3
-     *    TIM3 部分重映射   → CH1/CH2 挪到 PB4/PB5
-     *    同时 JTAG 必须已关闭（bsp_afio_init 里做的）。 */
-    AFIO->MAPR |= AFIO_MAPR_TIM2_REMAP_1;
+     *    TIM2 部分重映射 01 → CH1/CH2 挪到 PA15/PB3
+     *    TIM3 部分重映射 01 → CH1/CH2 挪到 PB4/PB5
+     *    同时 JTAG 必须已关闭（bsp_afio_init 里做的）。
+     *    ★2026-10-15 修正：原来写的是 TIM2_REMAP_1（位[9:8]=10 = **全重映射** PA0/PA1），
+     *    左编码器根本不动；部分重映射是 01，应置 TIM2_REMAP_0（位 8）。
+     *    实测证据：修之前 AFIO->MAPR = 0x02000604（TIM2=10），修完应为 0x02000504。 */
+    AFIO->MAPR |= AFIO_MAPR_TIM2_REMAP_0;
     AFIO->MAPR |= AFIO_MAPR_TIM3_REMAP_0;
 
     tim_encoder_setup(TIM2);

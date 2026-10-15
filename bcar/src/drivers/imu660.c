@@ -9,6 +9,7 @@
 #include "imu660.h"
 #include "bcar_config.h"
 #include "bsp_gpio.h"
+#include "bsp_systick.h"
 #include "stm32f1xx.h"
 
 /* ---------------- 寄存器地址（LSM6DSV16X，取自逐飞头文件） ---------------- */
@@ -206,8 +207,16 @@ uint8_t imu660_init(void)
 
     /* 4) 初始化序列（照抄逐飞官方）*/
     imu_write_reg(IMU_FUNC_CFG_ACCESS, 0x04u);   /* 解锁 embedded functions 页 */
-    /* 官方在这里等 30ms；这里不阻塞，靠后面的寄存器连续写自然拉开时间。
-     * 若实测初始化不稳，把下面这行换成 HAL_Delay(30)。 */
+    /* ★2026-10-15：官方初始化序列要求这里等 30ms（切换寄存器页需要时间）。
+     * 原来没等，实测后果 = WHO_AM_I 读得到、但后面 CTRL 寄存器全没写进去，
+     * 芯片留在掉电态 ⇒ IMU 原始值恒为 0（G(0,0,0) A(0,0,0)）。
+     * 这里用 millis 忙等，不引 HAL_Delay。 */
+    {
+        uint32_t t0 = bsp_millis();
+        while ((uint32_t)(bsp_millis() - t0) < 30u) {
+            /* 空转 30ms */
+        }
+    }
     imu_write_reg(IMU_CTRL3, IMU_CTRL3_VAL);     /* BDU + IF_INC */
     imu_write_reg(IMU_CTRL6, IMU_CTRL6_VAL);     /* 陀螺 ±2000dps */
     imu_write_reg(IMU_CTRL1, IMU_CTRL1_VAL);     /* 加速度 120Hz */
