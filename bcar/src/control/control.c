@@ -17,9 +17,26 @@ static uint16_t   s_base = BCAR_CTRL_BASE_MAG;
 static uint32_t   s_lost = 0u;        /* 已经连续多少拍看不到线 */
 static uint8_t    s_running = 0u;
 static ctrl_mode_t s_mode = CTRL_MODE_LINE;
+static uint32_t   s_kick_ticks = 0u;  /* >0 = 起步助推中（还剩几拍）*/
 
 /* 读秒那 3 秒的节拍是 5ms，直行环的 D 项要用秒 */
 #define CTRL_DT_S  ((float)BCAR_TICK_MS / 1000.0f)
+/* 起步助推时长（拍） */
+#define CTRL_KICK_TICKS  ((uint32_t)(BCAR_CTRL_KICK_MS / BCAR_TICK_MS))
+
+/**
+  * @brief 这一拍该用多大速度基准：起步助推期间用大的一脚，之后回 BASE
+  * @note  ★只在这里递减计数 —— 刹车那一支不会调它，所以"刹住不动"时
+  *        那一脚不会被白白消耗掉，等真要走的时候才踹。
+  */
+static float base_effective(void)
+{
+    if (s_kick_ticks > 0u) {
+        s_kick_ticks--;
+        return (float)BCAR_CTRL_KICK_MAG;
+    }
+    return (float)s_base;
+}
 
 void control_init(void)
 {
@@ -29,6 +46,7 @@ void control_init(void)
     s_lost    = 0u;
     s_running = 0u;
     s_mode    = CTRL_MODE_LINE;
+    s_kick_ticks = 0u;
 }
 
 void control_enter_run(float yaw_deg)
@@ -40,6 +58,7 @@ void control_enter_run(float yaw_deg)
     s_mode    = CTRL_MODE_STRAIGHT;
     s_lost    = 0u;
     s_running = 1u;
+    s_kick_ticks = CTRL_KICK_TICKS;                           /* 起步那一脚 */
 }
 
 void control_exit_run(void)
@@ -134,7 +153,7 @@ void control_step(float err_mm, uint8_t visible, float yaw_deg)
             s_mode = CTRL_MODE_LINE;
         }
         s_lost = 0u;
-        drive((float)s_base, angle_pd_step(&s_pd, err_mm));
+        drive(base_effective(), angle_pd_step(&s_pd, err_mm));
         return;
     }
 
@@ -149,9 +168,11 @@ void control_step(float err_mm, uint8_t visible, float yaw_deg)
 
     if (s_lost <= (uint32_t)(BCAR_STR_LOST_MS / BCAR_TICK_MS)) {
         /* 容忍期内：**不刹车**，保持航向直着走找线（速度打折，找线别冲）*/
-        drive((float)s_base * BCAR_STR_LOST_BASE_P, straight_step(&s_str, yaw_deg, CTRL_DT_S));
+        drive(base_effective() * BCAR_STR_LOST_BASE_P, straight_step(&s_str, yaw_deg, CTRL_DT_S));
     } else {
-        /* 撑不住了：停车。宁可停在赛道上等人捡，也别瞎冲。 */
+        /* 撑不住了：停车。宁可停在赛道上等人捡，也别瞎冲。
+         * ★刹停之后把"起步那一脚"重新装上 —— 再起步时还得踹一脚才动得了。 */
         motor_brake_all();
+        s_kick_ticks = CTRL_KICK_TICKS;
     }
 }
