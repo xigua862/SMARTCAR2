@@ -25,6 +25,7 @@ static speed_pi_t s_vel;
 static float      s_v_target = BCAR_V_TARGET_MS;
 static uint8_t    s_vel_on   = (uint8_t)BCAR_VEL_ON;
 static uint8_t    s_str_on   = (uint8_t)BCAR_STR_ON;   /* 陀螺直行开关（用户要求先关掉）*/
+static float      s_steer_prev = 0.0f;                 /* 上一次给出去的转向量（做变化率限幅用）*/
 static uint32_t   s_vramp    = 0u;    /* 起步时目标速度的斜坡计数 */
 #define CTRL_VRAMP_TICKS  ((uint32_t)(BCAR_V_RAMP_MS / BCAR_TICK_MS))
 static uint8_t    s_vis_run = 0u;     /* 连续多少拍"看得见线"（去抖用）*/
@@ -231,8 +232,28 @@ uint8_t control_lost_holding(void)
                       && s_lost <= (uint32_t)(BCAR_STR_LOST_MS / BCAR_TICK_MS)) ? 1u : 0u);
 }
 
+/**
+  * @brief 转向量变化率限幅：这一拍最多让转向量变 BCAR_CTRL_SLEW
+  * @note  治"猛甩头"：偏差一抖就打到满舵会让车甩出去、车头一偏就再也看不见线。
+  *        限了变化率之后：拐弯照样拐得动（0→满舵只要 75ms），但不会瞬间甩到底。
+  */
+static float steer_slew(float steer)
+{
+    float d = steer - s_steer_prev;
+
+    if (d > BCAR_CTRL_SLEW) {
+        steer = s_steer_prev + BCAR_CTRL_SLEW;
+    } else if (d < -BCAR_CTRL_SLEW) {
+        steer = s_steer_prev - BCAR_CTRL_SLEW;
+    }
+    s_steer_prev = steer;
+    return steer;
+}
+
 static void drive(float base, float steer)
 {
+    steer = steer_slew(steer);
+
     mix_out_t m = mixer_step(base, steer, BCAR_MOTION_MIN_MAG);
 
     motor_set(MOTOR_L, (m.l.dir == MIX_DIR_REV) ? MOTOR_REV : MOTOR_FWD, m.l.mag);
@@ -286,6 +307,7 @@ void control_step(float err_mm, uint8_t visible, float yaw_deg, float v_mm_s)
         /* 撑不住了：停车。宁可停在赛道上等人捡，也别瞎冲。
          * ★刹停之后把"起步那一脚"重新装上 —— 再起步时还得踹一脚才动得了。 */
         motor_brake_all();
+        s_steer_prev = 0.0f;      /* 停在原地：转向量归零，下次起步从 0 限幅 */
         s_kick_ticks = CTRL_KICK_TICKS;
     }
 }
