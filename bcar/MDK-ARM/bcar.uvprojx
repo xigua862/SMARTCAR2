@@ -631,6 +631,11 @@
           <FileType>1</FileType>
           <FilePath>../src/middleware/p2quant.c</FilePath>
         </File>
+        <File>
+          <FileName>zebra.c</FileName>
+          <FileType>1</FileType>
+          <FilePath>../src/middleware/zebra.c</FilePath>
+        </File>
         </Files>
       </Group>
       <Group>

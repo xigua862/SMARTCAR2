@@ -39,6 +39,7 @@
 #include "odom.h"
 #include "fsm.h"
 #include "launch.h"
+#include "zebra.h"
 #include "cmdline.h"
 #include "telemetry.h"
 #include "control.h"
@@ -86,6 +87,12 @@ static fsm_state_t s_fsm_prev = FSM_BOOT;
 /* 发车读秒（PC13 长按 → 3 秒 / 短短长 3 声 → RUN）。
  * 时序逻辑在 app/launch.c（纯逻辑、PC 可单测），这里只管"事件 → 动作"。 */
 static launch_t s_launch;
+
+/* 斑马线（S/G）判定与"过 S / 到 G 停车"的计数（zebra.c 是纯逻辑，PC 可单测）*/
+static zebra_t s_zebra;
+static uint8_t s_mark_count = 0u;    /* 已经过了几条斑马线：0=还没，1=过 S，2=过 G 完事 */
+/* 本拍弧长（毫米）—— 单编码器模式只要一个轮子（见 bcar_config.h 的说明）*/
+static float   s_ds_mm = 0.0f;
 
 /* 最近一次的灰度结果（8 路归一化值 + 偏差）。
  * 放全局是为了让 cmdline 能直接打印 —— 阶段 6 起转向环也读它。 */
@@ -257,13 +264,78 @@ int main(void)
                              (float)BCAR_TICK_MS / 1000.0f);
           has_gyro = 1u;
         }
-        /* 编码器 → 里程：弧长 + 航向增量 → 位姿 */
+        /* 编码器 → 里程：弧长 + 航向增量 → 位姿。
+         * ⚠ 右编码器读不到数（硬件待查）⇒ 单编码器模式下直接把左轮增量当整车位移，
+         *   别喂 0（喂 0 等于把里程砍半，"跑完一圈停车"的里程兜底就永不触发）。 */
         encoder_poll();
-        odom_step(encoder_delta(ENC_L), encoder_delta(ENC_R), has_gyro, dth);
+#if (BCAR_ODOM_SINGLE_ENC)
+        {
+          int16_t d = encoder_delta(ENC_L);
+          s_ds_mm = (float)d * BCAR_MM_PER_COUNT;
+          odom_step(d, d, has_gyro, dth);
+        }
+#else
+        {
+          int16_t dl = encoder_delta(ENC_L);
+          int16_t dr = encoder_delta(ENC_R);
+          s_ds_mm = (float)(dl + dr) * 0.5f * BCAR_MM_PER_COUNT;
+          odom_step(dl, dr, has_gyro, dth);
+        }
+#endif
       }
 
       /* 灰度 → 线偏差（err/visible 都在 s_line_out 里，阶段 7 起给转向环用）*/
       s_line_out = line_pos_step(adc_ir_raw_all());
+
+      /* ★过 S / 到 G：斑马线判定（用户口径："过 S 触发一次、跑完一圈到 G 再触发 → 停车"）。
+       * 判据全部来自实测（见 zebra.h）：强白跨度 ≥55mm 且 sum_p ≥4.5 —— 普通白线（11mm/3.3）够不着。
+       * ★这里**每拍都跑、不分状态**：这样台上把车往斑马线上一放，串口就会打 [MARK]，好验证。 */
+      if (zebra_step(&s_zebra, &s_line_out))
+      {
+        float s_now = odom_get().s_mm;
+        if (fsm_state() != FSM_RUN)
+        {
+          uart_dbg_printf("
+[MARK] 斑马线（当前 %s，不计入）s=%d mm
+",
+                          fsm_state_name(fsm_state()), (int)s_now);
+        }
+        else if (s_mark_count == 0u && s_now < BCAR_MARK_S_WINDOW_MM)
+        {
+          s_mark_count = 1u;
+          uart_dbg_printf("
+[MARK] 过 S（第 1 条斑马线）s=%d mm
+", (int)s_now);
+        }
+        else if (s_now > BCAR_FINISH_MIN_MM)
+        {
+          s_mark_count = 2u;
+          uart_dbg_puts("
+[FINISH] 过 G（第 2 条斑马线）→ 停车
+");
+          buzzer_beeps(3u, (uint16_t)BCAR_BEEP_SHORT_MS, (uint16_t)BCAR_BEEP_GAP_MS);
+          (void)fsm_set(FSM_IDLE);       /* 离开 RUN 会自动刹车（见边沿处理）*/
+        }
+        else
+        {
+          uart_dbg_printf("
+[MARK] 斑马线（s=%d mm 不在判定窗口，按误判忽略）
+", (int)s_now);
+        }
+      }
+
+      /* 里程兜底：斑马线万一漏认（白条只有 18mm，位置不巧就可能漏），跑够一圈也停 */
+      if (fsm_state() == FSM_RUN && s_mark_count == 1u
+          && odom_get().s_mm > BCAR_FINISH_ODOM_MM)
+      {
+        s_mark_count = 2u;
+        uart_dbg_printf("
+[FINISH] 里程到一圈（s=%d mm，斑马线没认出来）→ 停车
+",
+                        (int)odom_get().s_mm);
+        buzzer_beeps(3u, (uint16_t)BCAR_BEEP_SHORT_MS, (uint16_t)BCAR_BEEP_GAP_MS);
+        (void)fsm_set(FSM_IDLE);
+      }
 
       /* --- 按键事件（先处理；后面的状态边沿同拍就能看到新状态）--- */
 
@@ -360,6 +432,8 @@ int main(void)
             odom_reset();
             telemetry_start_lap();   /* 本圈统计从起跑算，别把站着读秒的 3 秒算进去 */
             /* 起步模式 = 陀螺直行（目标航向 = 0 = 发车方向），看到线自动交回循迹环 */
+            zebra_init(&s_zebra);
+            s_mark_count = 0u;
             control_enter_run(heading_yaw_deg());
             uart_dbg_printf("[CTRL] 进入 RUN：先按陀螺直行（目标 %d deg），看到线交给循迹环；BASE=%u\r\n",
                             (int)heading_yaw_deg(), (unsigned)control_base());
@@ -375,15 +449,62 @@ int main(void)
         {
           /* 循迹看 err/visible，看不到线就切陀螺直行 —— 两种模式在 control.c 里切 */
           control_step(s_line_out.err_mm, s_line_out.visible, heading_yaw_deg());
+
+          /* ★过 S / 到 G：斑马线判定（用户口径："过 S 触发一次、跑完一圈到 G 再触发 → 停车"）。
+           * 判据是实测出来的：斑马线上 7 路白、白区跨度 77mm；普通白线最多 4 路、≤33mm。 */
+          if (zebra_step(&s_zebra, &s_line_out))
+          {
+            float s_now = odom_get().s_mm;
+            if (s_mark_count == 0u && s_now < BCAR_MARK_S_WINDOW_MM)
+            {
+              s_mark_count = 1u;
+              uart_dbg_printf("
+
+[MARK] 过 S（第 1 条斑马线）s=%d mm
+
+", (int)s_now);
+            }
+            else if (s_now > BCAR_FINISH_MIN_MM)
+            {
+              s_mark_count = 2u;
+              uart_dbg_puts("
+
+[FINISH] 过 G（第 2 条斑马线）→ 停车
+
+");
+              buzzer_beeps(3u, (uint16_t)BCAR_BEEP_SHORT_MS, (uint16_t)BCAR_BEEP_GAP_MS);
+              (void)fsm_set(FSM_IDLE);       /* 离开 RUN 会自动刹车（见上面的边沿处理）*/
+            }
+            else
+            {
+              uart_dbg_printf("
+
+[MARK] 斑马线（s=%d mm 不在判定窗口，按误判忽略）
+
+", (int)s_now);
+            }
+          }
+          else if (s_mark_count == 1u && odom_get().s_mm > BCAR_FINISH_ODOM_MM)
+          {
+            /* 兜底：斑马线万一没认出来（白条只有 18mm，位置不巧就可能漏），
+             * 里程到一圈也停车 —— 宁可停早点，也别一直冲。 */
+            s_mark_count = 2u;
+            uart_dbg_printf("
+
+[FINISH] 里程到一圈（s=%d mm，斑马线没认出来）→ 停车
+
+",
+                            (int)odom_get().s_mm);
+            buzzer_beeps(3u, (uint16_t)BCAR_BEEP_SHORT_MS, (uint16_t)BCAR_BEEP_GAP_MS);
+            (void)fsm_set(FSM_IDLE);
+          }
         }
       }
 
       /* 遥测：把这拍的数据喂进本圈统计（顺带按需发实时行）*/
       telemetry_tick(s_line_out.err_mm, s_line_out.visible,
                      odom_get().v_mm_s,
-                     /* 本拍弧长用编码器差分直接算，避免再读一次 odom 内部量 */
-                     (float)(encoder_delta(ENC_L) + encoder_delta(ENC_R)) * 0.5f
-                       * BCAR_MM_PER_COUNT,
+                     s_ds_mm,                 /* 本拍弧长（上面算好的）*/
                      heading_yaw_deg());
 
       /* 跨多拍的命令（陀螺零偏标定）在这里推进 */
