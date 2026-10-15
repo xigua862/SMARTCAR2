@@ -38,11 +38,19 @@ void control_exit_run(void);
   * @param  visible 1 = 看到线
   * @param  yaw_deg 当前航向（逆时针为正）
   */
-void control_step(float err_mm, uint8_t visible, float yaw_deg);
+void control_step(float err_mm, uint8_t visible, float yaw_deg, float v_mm_s);
 
-/** @brief 现场改速度基准（不用重烧）*/
+/** @brief 现场改速度基准（速度环关掉时才用得上）*/
 void control_set_base(uint16_t mag);
 uint16_t control_base(void);
+
+/** @brief 速度环：设目标速度（mm/s）。传 0 = 关掉速度环、退回手动 BASE */
+void control_set_speed(float v_mm_s);
+float control_v_target(void);
+/** @brief 速度环当前输出（诊断/串口看）*/
+float control_vel_out(void);
+/** @brief 速度环是否开着 */
+uint8_t control_vel_on(void);
 
 /** @brief 现场改循迹环增益 */
 void control_set_pd(float kp, float kd);

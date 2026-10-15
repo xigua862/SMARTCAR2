@@ -389,6 +389,9 @@ static void execute(char *line)
                         (int)(kp * 100.0f), (int)(kd * 100.0f),
                         control_mode_name(),
                         (unsigned)control_lost_ms(), (unsigned)control_lost_holding());
+        uart_dbg_printf("SPD v_x10=%d mm/s vel_out=%d vel_on=%u\r\n",
+                        (int)(control_v_target() * 10.0f), (int)control_vel_out(),
+                        (unsigned)control_vel_on());
         uart_dbg_printf("STRAIGHT skp_x100=%d skd_x100=%d sign=%d target_x10=%d deg\r\n",
                         (int)(skp * 100.0f), (int)(skd * 100.0f), (int)ssign, (int)(stgt * 10.0f));
     } else if (su_streq(w, "SGAIN")) {
@@ -408,6 +411,19 @@ static void execute(char *line)
                 uart_dbg_puts("ERR 增益必须是整数（按 1/100 记）\r\n");
             }
         }
+    } else if (su_streq(w, "SPD")) {
+        /* 速度环目标速度（mm/s）：0 = 关掉速度环、退回手动 BASE */
+        uint32_t v = 9999u;
+        if (arg_u32(line, &v) && v <= 3000u) {
+            control_set_speed((float)v);
+            if (v == 0u) {
+                uart_dbg_puts("OK SPD=0（速度环关闭，退回手动 BASE）\r\n");
+            } else {
+                uart_dbg_printf("OK SPD=%u mm/s（速度环接管，积分自动补摩擦）\r\n", (unsigned)v);
+            }
+        } else {
+            uart_dbg_puts("ERR 用法: SPD <0..3000>  mm/s，例如 SPD 300；SPD 0 关速度环\r\n");
+        }
     } else if (su_streq(w, "LSDIR")) {
         uint32_t v = 1u;
         if (arg_u32(line, &v) && (v == 1u || v == 2u)) {
@@ -416,6 +432,7 @@ static void execute(char *line)
             uart_dbg_printf("OK LSDIR=%d（循迹环方向；1=默认 2=反过来）\r\n", (int)sign);
         } else {
             uart_dbg_puts("ERR 用法: LSDIR <1|2>  （车朝远离线的方向拐 ⇒ 试 2）\r\n");
+    uart_dbg_puts("  SPD <mm/s>            速度环目标速度（SPD 300）；SPD 0=关速度环退回手动 BASE\r\n");
         }
     } else if (su_streq(w, "SDIR")) {
         uint32_t v = 1u;

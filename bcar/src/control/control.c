@@ -8,6 +8,7 @@
 #include "bcar_config.h"
 #include "angle_pd.h"
 #include "straight.h"
+#include "speed_pi.h"
 #include "mixer.h"
 #include "motor.h"
 
@@ -19,6 +20,12 @@ static uint8_t    s_running = 0u;
 static ctrl_mode_t s_mode = CTRL_MODE_LINE;
 static uint32_t   s_kick_ticks = 0u;  /* >0 = 起步斜坡中（还剩几拍）*/
 static int8_t     s_line_sign = BCAR_CTRL_LINE_SIGN;   /* 线环方向：err 反了就翻 */
+/* 速度环（见 speed_pi.h）：把"摩擦"当扰动自动补偿掉 */
+static speed_pi_t s_vel;
+static float      s_v_target = BCAR_V_TARGET_MS;
+static uint8_t    s_vel_on   = (uint8_t)BCAR_VEL_ON;
+static uint32_t   s_vramp    = 0u;    /* 起步时目标速度的斜坡计数 */
+#define CTRL_VRAMP_TICKS  ((uint32_t)(BCAR_V_RAMP_MS / BCAR_TICK_MS))
 static uint8_t    s_vis_run = 0u;     /* 连续多少拍"看得见线"（去抖用）*/
 static uint8_t    s_invis_run = 0u;   /* 连续多少拍"看不见线"*/
 /* 模式切换去抖：visible 在阈值附近抖动时，不许每拍都切模式 —— 那会让转向量在两个环之间跳，
@@ -44,8 +51,19 @@ static uint8_t    s_invis_run = 0u;   /* 连续多少拍"看不见线"*/
   * ★只在这里递减计数 —— 刹车那一支不会调它，所以"刹住不动"时不会白消耗，
   *   等真要走的时候才起坡。
   */
-static float base_effective(void)
+static float base_effective(float v_mm_s)
 {
+    /* ---- 速度环优先：自动补偿摩擦，目标速度带 600ms 斜坡（软起）---- */
+    if (s_vel_on != 0u) {
+        float vt = s_v_target;
+        if (s_vramp < CTRL_VRAMP_TICKS) {
+            s_vramp++;
+            vt = s_v_target * (float)s_vramp / (float)CTRL_VRAMP_TICKS;
+        }
+        return speed_pi_step(&s_vel, vt, v_mm_s, CTRL_DT_S);
+    }
+
+    /* ---- 速度环关掉时：退回"起步斜坡 + BASE"的老路子 ---- */
     if (s_kick_ticks > 0u) {
         uint32_t done = CTRL_KICK_TICKS - s_kick_ticks;          /* 已经过了几拍 */
         float    f    = (float)done / (float)CTRL_KICK_TICKS;    /* 0 → 1 */
@@ -65,6 +83,8 @@ void control_init(void)
 {
     angle_pd_init(&s_pd, BCAR_CTRL_KP, BCAR_CTRL_KD, BCAR_CTRL_STEER_MAX);
     straight_init(&s_str, BCAR_STR_KP, BCAR_STR_KD, BCAR_STR_STEER_MAX, BCAR_STR_SIGN);
+    speed_pi_init(&s_vel, BCAR_VEL_KP, BCAR_VEL_KI,
+                  (float)BCAR_VEL_MIN_MAG, (float)BCAR_VEL_MAX_MAG, (float)BCAR_CTRL_BASE_MAG);
     s_base    = BCAR_CTRL_BASE_MAG;
     s_lost    = 0u;
     s_running = 0u;
@@ -83,7 +103,9 @@ void control_enter_run(float yaw_deg)
     s_mode    = CTRL_MODE_STRAIGHT;
     s_lost    = 0u;
     s_running = 1u;
-    s_kick_ticks = CTRL_KICK_TICKS;                           /* 起步那一脚 */
+    s_kick_ticks = CTRL_KICK_TICKS;                           /* 起步那一脚（速度环关时用）*/
+    speed_pi_reset(&s_vel, (float)BCAR_VEL_MIN_MAG);           /* 速度环：积分清零、从下限起步 */
+    s_vramp = 0u;                                             /* 目标速度斜坡从头来（软起）*/
 }
 
 void control_exit_run(void)
@@ -102,6 +124,31 @@ void control_set_base(uint16_t mag)
 uint16_t control_base(void)
 {
     return s_base;
+}
+
+void control_set_speed(float v_mm_s)
+{
+    if (v_mm_s <= 0.0f) {
+        s_vel_on = 0u;                      /* SPD 0 = 关掉速度环 */
+        return;
+    }
+    s_v_target = v_mm_s;
+    s_vel_on   = 1u;
+}
+
+float control_v_target(void)
+{
+    return s_v_target;
+}
+
+float control_vel_out(void)
+{
+    return (s_vel_on != 0u) ? s_vel.out : 0.0f;
+}
+
+uint8_t control_vel_on(void)
+{
+    return s_vel_on;
 }
 
 void control_set_pd(float kp, float kd)
@@ -174,7 +221,7 @@ static void drive(float base, float steer)
     motor_set(MOTOR_R, (m.r.dir == MIX_DIR_REV) ? MOTOR_REV : MOTOR_FWD, m.r.mag);
 }
 
-void control_step(float err_mm, uint8_t visible, float yaw_deg)
+void control_step(float err_mm, uint8_t visible, float yaw_deg, float v_mm_s)
 {
     if (!s_running) {
         return;
@@ -191,7 +238,7 @@ void control_step(float err_mm, uint8_t visible, float yaw_deg)
         }
         s_lost = 0u;
         /* err 乘上方向开关：翻它就能把"朝远离线拐"改成"朝线拐" */
-        drive(base_effective(), angle_pd_step(&s_pd, err_mm * (float)s_line_sign));
+        drive(base_effective(v_mm_s), angle_pd_step(&s_pd, err_mm * (float)s_line_sign));
         return;
     }
 
@@ -208,7 +255,7 @@ void control_step(float err_mm, uint8_t visible, float yaw_deg)
 
     if (s_lost <= (uint32_t)(BCAR_STR_LOST_MS / BCAR_TICK_MS)) {
         /* 容忍期内：**不刹车**，保持航向直着走找线（速度打折，找线别冲）*/
-        drive(base_effective() * BCAR_STR_LOST_BASE_P, straight_step(&s_str, yaw_deg, CTRL_DT_S));
+        drive(base_effective(v_mm_s) * BCAR_STR_LOST_BASE_P, straight_step(&s_str, yaw_deg, CTRL_DT_S));
     } else {
         /* 撑不住了：停车。宁可停在赛道上等人捡，也别瞎冲。
          * ★刹停之后把"起步那一脚"重新装上 —— 再起步时还得踹一脚才动得了。 */

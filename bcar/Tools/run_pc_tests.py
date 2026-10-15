@@ -33,10 +33,12 @@ TESTS = [
     ("p2quant P²分位",      "Tools/test_p2quant.c",  ["src/middleware/p2quant.c"],  "src/middleware", True),
     ("control 控制环(循迹+直行)",  "Tools/test_control.c", ["src/control/angle_pd.c",
                                                       "src/control/straight.c",
+                                                      "src/control/speed_pi.c",
                                                       "src/control/mixer.c"],   "src/control",   True),
     ("lapstat 单圈统计",    "Tools/test_lapstat.c",  ["src/middleware/lapstat.c",
                                                       "src/middleware/p2quant.c"],  "src/middleware", True),
     ("launch 发车读秒",     "Tools/test_launch.c",   ["src/app/launch.c"],        "src/app",        False),
+    ("speed_pi 速度环",      "Tools/test_speed_pi.c", ["src/control/speed_pi.c"],  "src/control",    True),
     ("zebra 斑马线检测",    "Tools/test_zebra.c",    ["src/middleware/zebra.c",
                                                       "src/middleware/line_pos.c"], "src/middleware", True),
 ]

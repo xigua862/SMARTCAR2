@@ -448,7 +448,8 @@ int main(void)
         if (st == FSM_RUN)
         {
           /* 循迹看 err/visible，看不到线就切陀螺直行 —— 两种模式在 control.c 里切 */
-          control_step(s_line_out.err_mm, s_line_out.visible, heading_yaw_deg());
+          control_step(s_line_out.err_mm, s_line_out.visible,
+                       heading_yaw_deg(), odom_get().v_mm_s);
 
           /* ★过 S / 到 G：斑马线判定（用户口径："过 S 触发一次、跑完一圈到 G 再触发 → 停车"）。
            * 判据是实测出来的：斑马线上 7 路白、白区跨度 77mm；普通白线最多 4 路、≤33mm。 */

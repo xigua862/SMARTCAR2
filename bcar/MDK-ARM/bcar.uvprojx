@@ -662,6 +662,11 @@
           <FilePath>../src/control/mixer.c</FilePath>
         </File>
         <File>
+          <FileName>speed_pi.c</FileName>
+          <FileType>1</FileType>
+          <FilePath>../src/control/speed_pi.c</FilePath>
+        </File>
+        <File>
           <FileName>straight.c</FileName>
           <FileType>1</FileType>
           <FilePath>../src/control/straight.c</FilePath>
