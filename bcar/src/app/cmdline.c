@@ -84,7 +84,10 @@ static void print_help(void)
     uart_dbg_puts("  TLM <0|1>             实时行开关（每 100ms 一行 err/vis/v/yaw/lost）\r\n");
     uart_dbg_puts("  PD <kp*100> <kd*100>  现场改转向增益（PD 2500 300 → kp=25.00 kd=3.00）\r\n");
     uart_dbg_puts("  BASE <mag>            现场改循迹速度基准（0~1000）\r\n");
-    uart_dbg_puts("  GAIN                  看当前增益与速度基准\r\n");
+    uart_dbg_puts("  GAIN                  看当前增益/模式/丢线时长\r\n");
+    uart_dbg_puts("  SGAIN <kp*100> <kd*100>  现场改\"陀螺直行\"增益（SGAIN 1200 150 → 12.0 / 1.5）\r\n");
+    uart_dbg_puts("  SDIR <1|-1>           翻陀螺直行方向（直行时车越偏越远就试另一个）\r\n");
+    uart_dbg_puts("                        —— 看不到线时车靠陀螺直行找线，2.5 秒还没找到才刹\r\n");
     uart_dbg_puts("  LOOPBACK [ms]         TX-RX 短接时的回环自检（默认 200ms）\r\n");
 }
 
@@ -374,11 +377,44 @@ static void execute(char *line)
         }
     } else if (su_streq(w, "GAIN")) {
         float kp = 0.0f, kd = 0.0f;
+        float skp = 0.0f, skd = 0.0f, stgt = 0.0f;
+        int8_t ssign = 1;
         control_get_pd(&kp, &kd);
-        uart_dbg_printf("BASE=%u kp_x100=%d kd_x100=%d lost_ticks=%u holding=%u\r\n",
+        control_get_straight(&skp, &skd, &ssign, &stgt);
+        uart_dbg_printf("BASE=%u kp_x100=%d kd_x100=%d mode=%s lost=%u ms holding=%u\r\n",
                         (unsigned)control_base(),
                         (int)(kp * 100.0f), (int)(kd * 100.0f),
-                        (unsigned)control_lost_ticks(), (unsigned)control_lost_holding());
+                        control_mode_name(),
+                        (unsigned)control_lost_ms(), (unsigned)control_lost_holding());
+        uart_dbg_printf("STRAIGHT skp_x100=%d skd_x100=%d sign=%d target_x10=%d deg\r\n",
+                        (int)(skp * 100.0f), (int)(skd * 100.0f), (int)ssign, (int)(stgt * 10.0f));
+    } else if (su_streq(w, "SGAIN")) {
+        char *a1 = su_arg(line, 1u);
+        char *a2 = su_arg(line, 2u);
+        if (a1 == 0 || a2 == 0) {
+            uart_dbg_puts("ERR 用法: SGAIN <kp*100> <kd*100>，例如 SGAIN 1200 150 → kp=12.0 kd=1.5\r\n");
+        } else {
+            uint32_t kp100 = 0u, kd100 = 0u;
+            su_tok(a1); su_tok(a2);
+            if (su_parse_u32(a1, &kp100) && su_parse_u32(a2, &kd100)) {
+                control_set_straight((float)kp100 / 100.0f, (float)kd100 / 100.0f);
+                uart_dbg_printf("OK SGAIN skp=%u.%02u skd=%u.%02u\r\n",
+                                (unsigned)(kp100 / 100u), (unsigned)(kp100 % 100u),
+                                (unsigned)(kd100 / 100u), (unsigned)(kd100 % 100u));
+            } else {
+                uart_dbg_puts("ERR 增益必须是整数（按 1/100 记）\r\n");
+            }
+        }
+    } else if (su_streq(w, "SDIR")) {
+        uint32_t v = 1u;
+        if (arg_u32(line, &v) && (v == 1u || v == 2u)) {
+            /* 收 1 或 2 都行：2 当 -1 用（免得纠结负号怎么打）*/
+            int8_t sign = (v == 1u) ? (int8_t)1 : (int8_t)-1;
+            control_set_straight_sign(sign);
+            uart_dbg_printf("OK SDIR=%d（陀螺直行方向；1=默认 2=反过来）\r\n", (int)sign);
+        } else {
+            uart_dbg_puts("ERR 用法: SDIR <1|2>  （1 = 默认方向；2 = 反过来）\r\n");
+        }
     } else if (su_streq(w, "KEY")) {
         /* held = 这一下按住多久了 —— 台上验"长按 200ms 发车"就看它 */
         uart_dbg_printf("KEY START(PC13)=%u held=%u ms TRIG(PB0)=%u (1=按住)\r\n",

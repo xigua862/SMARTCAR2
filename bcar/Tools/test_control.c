@@ -15,6 +15,7 @@
 #include <math.h>
 #include "angle_pd.h"
 #include "mixer.h"
+#include "straight.h"
 
 static int g_pass = 0;
 static int g_fail = 0;
@@ -138,6 +139,89 @@ int main(void)
         angle_pd_init(&pd, 25.0f, 5.0f, 1000.0f);
         b = angle_pd_step(&pd, 5.0f);            /* 干净初值 */
         check_near(a, b, 0.01f, "复位后与干净初值一致（无旧微分残留）");
+    }
+
+    /* ================= 陀螺直行（航向保持）================= */
+
+    /* ---- 11. ★核心：直行时航向偏了要往"回正"的方向打 ----
+     * 口径：yaw 逆时针为正（车头偏左 = yaw 变大）；转向量 >0 = 往右打。
+     * ⇒ 车头偏左（yaw > 目标）必须给"正"转向量（往右），否则车会越偏越远、画龙/掉头。 */
+    {
+        straight_t st;
+        float steer;
+        straight_init(&st, 12.0f, 0.0f, 600.0f, 1);
+        straight_set_target(&st, 0.0f);
+        steer = straight_step(&st, 10.0f, 0.005f);    /* 车头偏左 10° */
+        check(steer > 0.0f, "★车头偏左(逆时针) → 转向量为正（往右打、回来）");
+        check_near(steer, 120.0f, 0.01f, "P 项 = kp × 误差 = 12 × 10 = 120");
+        straight_reset(&st);
+        steer = straight_step(&st, -10.0f, 0.005f);   /* 车头偏右 10° */
+        check(steer < 0.0f, "车头偏右 → 转向量为负（往左打）");
+    }
+
+    /* ---- 12. 对准目标 → 不给转向量（车就该直着走）---- */
+    {
+        straight_t st;
+        straight_init(&st, 12.0f, 1.5f, 600.0f, 1);
+        straight_set_target(&st, 0.0f);
+        check_near(straight_step(&st, 0.0f, 0.005f), 0.0f, 0.01f, "正对目标 → 转向量 0");
+        check_near(straight_step(&st, 0.0f, 0.005f), 0.0f, 0.01f, "连续两拍都 0（无静差）");
+    }
+
+    /* ---- 13. 第一拍不算 D：进直行那一下不许猛拐 ---- */
+    {
+        straight_t st;
+        float a, b;
+        straight_init(&st, 12.0f, 300.0f, 600.0f, 1);   /* 把 D 调超大来暴露问题 */
+        straight_set_target(&st, 0.0f);
+        a = straight_step(&st, 10.0f, 0.005f);          /* 第一拍：只算 P */
+        check_near(a, 120.0f, 0.01f, "★第一拍只出 P 项（不做微分冲击）");
+        straight_init(&st, 12.0f, 300.0f, 600.0f, 1);
+        straight_set_target(&st, 0.0f);
+        (void)straight_step(&st, 10.0f, 0.005f);
+        b = straight_step(&st, 10.0f, 0.005f);          /* 误差没变 → D = 0 */
+        check_near(b, 120.0f, 0.01f, "误差不变 → D 项为 0");
+    }
+
+    /* ---- 14. D 项用的是"度/秒"，不是"每拍"（5ms 一拍差 200 倍）---- */
+    {
+        straight_t st;
+        float steer;
+        straight_init(&st, 0.0f, 1.5f, 600.0f, 1);      /* 只留 D */
+        straight_set_target(&st, 0.0f);
+        (void)straight_step(&st, 0.0f, 0.005f);         /* 第一拍建立基准 */
+        steer = straight_step(&st, 0.1f, 0.005f);       /* 5ms 里转了 0.1° = 20 度/秒 */
+        check_near(steer, 1.5f * 20.0f, 0.5f, "★D = kd × (d误差/dt)：0.1°/5ms = 20°/s → 30");
+    }
+
+    /* ---- 15. sign = -1：整条反过来（台上 SDIR 2 用）---- */
+    {
+        straight_t st;
+        straight_init(&st, 12.0f, 0.0f, 600.0f, -1);
+        straight_set_target(&st, 0.0f);
+        check(straight_step(&st, 10.0f, 0.005f) < 0.0f, "sign=-1：车头偏左 → 往左打（方向已翻）");
+        straight_set_sign(&st, 1);
+        check(straight_step(&st, 10.0f, 0.005f) > 0.0f, "改回 sign=1：又变回往右打");
+    }
+
+    /* ---- 16. 限幅 + 换目标要清微分历史 ---- */
+    {
+        straight_t st;
+        float steer;
+        straight_init(&st, 500.0f, 0.0f, 600.0f, 1);   /* kp 大到必然超限 */
+        straight_set_target(&st, 0.0f);
+        steer = straight_step(&st, 90.0f, 0.005f);
+        check_near(steer, 600.0f, 0.01f, "转向量限幅在 steer_max");
+
+        straight_init(&st, 12.0f, 50.0f, 600.0f, 1);
+        straight_set_target(&st, 0.0f);
+        (void)straight_step(&st, 30.0f, 0.005f);       /* 先攒一段误差历史 */
+        straight_set_target(&st, 30.0f);               /* 换目标（= 丢线那一刻的航向）*/
+        steer = straight_step(&st, 30.0f, 0.005f);
+        check_near(steer, 0.0f, 0.01f, "★换目标后第一拍：目标是当前航向 → 转向量 0（不清历史就会猛拐）");
+
+        straight_set_target(&st, 0.0f);
+        check_near(straight_target(&st), 0.0f, 0.01f, "target 读回来对");
     }
 
     printf("\n结果: %d 通过, %d 失败\n", g_pass, g_fail);

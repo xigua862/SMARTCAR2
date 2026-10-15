@@ -96,6 +96,20 @@
 #define BCAR_CTRL_KP           25.0f   /* 转向 P：mag / mm（误差 10mm → 转向量 250）*/
 #define BCAR_CTRL_KD            3.0f   /* 转向 D：mag / mm（抑制过冲）*/
 #define BCAR_CTRL_STEER_MAX   600.0f   /* 转向量限幅 */
-#define BCAR_CTRL_LOST_TICKS    40u    /* 丢线容忍：40 拍 = 200ms，超了就停 */
+
+/* ---- 陀螺直行（航向保持，2026-10-15 晚加）----
+ * 干什么：看不到线的时候（发车起步 / 丢线 / 过斑马线断开）**不刹车**，
+ *         用陀螺保持"当时那个航向"直着走，一看到线立刻交回循迹环。
+ * 为什么要：之前丢线只撑 200ms 就刹死 ⇒ 按 PC13 发车后车"不动"（桌面上没线）。
+ * 符号：yaw 逆时针为正、转向量 >0 = 往右打 ⇒ `sign = +1` 时
+ *       steer = kp×(yaw − 目标)，车头偏左就往右纠。
+ *       ★台上若发现"车往越偏越远的方向打"（画龙/掉头），先敲 `SDIR -1` 试试，
+ *        那就是陀螺或电机装反了，**不用回电脑重烧**。 */
+#define BCAR_STR_KP            12.0f   /* P：mag / 度（偏 10° → 打 120）*/
+#define BCAR_STR_KD             1.5f   /* D：mag / (度/秒)（抑震荡）*/
+#define BCAR_STR_STEER_MAX    600.0f   /* 直行也用同一套限幅 */
+#define BCAR_STR_SIGN             1    /* +1 / -1（台上一键翻，见上）*/
+#define BCAR_STR_LOST_MS       2500u   /* 丢线后最多直行找线 2.5 秒，超了才刹车（兜底）*/
+#define BCAR_STR_LOST_BASE_P    0.6f   /* 丢线找线时速度打折：别冲 */
 
 #endif /* __BCAR_CONFIG_H */

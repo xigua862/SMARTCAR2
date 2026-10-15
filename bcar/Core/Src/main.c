@@ -352,9 +352,10 @@ int main(void)
             encoder_reset();
             odom_reset();
             telemetry_start_lap();   /* 本圈统计从起跑算，别把站着读秒的 3 秒算进去 */
-            control_enter_run();
-            uart_dbg_printf("[CTRL] 进入 RUN：转向环接管（BASE=%u）\r\n",
-                            (unsigned)control_base());
+            /* 起步模式 = 陀螺直行（目标航向 = 0 = 发车方向），看到线自动交回循迹环 */
+            control_enter_run(heading_yaw_deg());
+            uart_dbg_printf("[CTRL] 进入 RUN：先按陀螺直行（目标 %d deg），看到线交给循迹环；BASE=%u\r\n",
+                            (int)heading_yaw_deg(), (unsigned)control_base());
           }
           else if (s_fsm_prev == FSM_RUN)
           {
@@ -365,7 +366,8 @@ int main(void)
         }
         if (st == FSM_RUN)
         {
-          control_step(s_line_out.err_mm, s_line_out.visible);
+          /* 循迹看 err/visible，看不到线就切陀螺直行 —— 两种模式在 control.c 里切 */
+          control_step(s_line_out.err_mm, s_line_out.visible, heading_yaw_deg());
         }
       }
 

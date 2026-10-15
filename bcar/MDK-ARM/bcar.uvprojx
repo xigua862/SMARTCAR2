@@ -651,6 +651,11 @@
           <FileType>1</FileType>
           <FilePath>../src/control/mixer.c</FilePath>
         </File>
+        <File>
+          <FileName>straight.c</FileName>
+          <FileType>1</FileType>
+          <FilePath>../src/control/straight.c</FilePath>
+        </File>
         </Files>
       </Group>
       <Group>
