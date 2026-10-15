@@ -26,12 +26,13 @@ fsm_state_t fsm_state(void)
 const char *fsm_state_name(fsm_state_t s)
 {
     switch (s) {
-    case FSM_BOOT:  return "BOOT";
-    case FSM_IDLE:  return "IDLE";
-    case FSM_TEST:  return "TEST";
-    case FSM_RUN:   return "RUN";
-    case FSM_ESTOP: return "ESTOP";
-    default:        return "?";
+    case FSM_BOOT:      return "BOOT";
+    case FSM_IDLE:      return "IDLE";
+    case FSM_TEST:      return "TEST";
+    case FSM_COUNTDOWN: return "COUNTDOWN";
+    case FSM_RUN:       return "RUN";
+    case FSM_ESTOP:     return "ESTOP";
+    default:            return "?";
     }
 }
 
@@ -41,8 +42,9 @@ uint8_t fsm_set(fsm_state_t s)
         return 0u;
     }
 
-    /* 进 TEST 前先把电机刹住：避免带着上一个状态的速度进测试模式 */
-    if (s == FSM_TEST || s == FSM_IDLE) {
+    /* 进 TEST/IDLE/COUNTDOWN 前先把电机刹住：避免带着上一个状态的速度进去。
+     * 读秒这 3 秒必须刹住 —— 车要在发车点上纹丝不动地等那三声。 */
+    if (s == FSM_TEST || s == FSM_IDLE || s == FSM_COUNTDOWN) {
         motor_brake_all();
     }
     /* 任何状态切出去都先刹车（RUN 里由控制环接管，届时改这里）*/

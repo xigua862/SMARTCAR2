@@ -51,6 +51,29 @@
 /* ---- 按键消抖 ---- */
 #define BCAR_KEY_DEBOUNCE_MS 15u     /* 连续稳定 15ms 才算数（主循环 5ms 一拍 → 3 拍）*/
 
+/* ---- 发车读秒里自动标一次陀螺零偏（2026-10-15 加）----
+ * 为什么要：2026-10-15 在台上用串口实测（车静止 45 秒），陀螺 Z 的原始零偏 ≈ **0.4 dps**；
+ *   不标定就直接积分 ⇒ 航向以 0.4°/s 漂，跑一圈（约 40 秒）就能飘掉约 16° ——
+ *   "惯导为主"的设计会直接垮掉，而且**不报错**，只在赛道上表现为"怎么调都跑不直"。
+ * 怎么用：发车读秒那 3 秒车本来就刹着不动，正好采 1 秒静止样本把零偏标掉；
+ *   采集期间若车明显被碰/在转（样本极差 > BCAR_GYRO_AUTOCAL_MAX_SPREAD_DPS），
+ *   本次**放弃**自动标定、沿用原零偏，并在串口说明（宁可不标，也不标一个错的）。
+ * 不想要就把开关改 0：那时只认台上手敲的 GYROZERO。 */
+#define BCAR_GYRO_AUTOCAL_ON_LAUNCH        1
+#define BCAR_GYRO_AUTOCAL_MAX_SPREAD_DPS   1.0f
+
+/* ---- 按键长按门限（发车流程，2026-10-15 需求）----
+ * PC13（KEY2 / 正式发车键）**长按 200ms 才发车，短按不响应**；
+ * 短于这个时长的按下只报一次"短按"（串口提示一句），不发车。 */
+#define BCAR_KEY_LONG_MS     200u
+
+/* ---- 发车流程（按键 → 读秒 → 循迹）----
+ * 时序（哪一声、隔多久）在 `src/app/launch.c` 里；这里只定"响多久"这种物理量。
+ * 读秒节奏 = 短 2 声 + 长 1 声（用户 2026-10-15 定）。 */
+#define BCAR_BEEP_SHORT_MS   80u     /* "哔"：读秒前两声、测试模式的每一声 */
+#define BCAR_BEEP_LONG_MS    600u    /* "哔——"：读秒第 3 声 = 松手起跑那声 */
+#define BCAR_BEEP_GAP_MS     120u    /* 连鸣两声之间的间隔（测试模式"哔 哔"）*/
+
 /* ---- 里程标定（★必须实测，现在这个值是猜的）----
  * 标定方法：把车推 1 米（1000mm），看串口 `ENC` 的 total 涨了多少计数，
  *           然后 mm_per_count = 1000 / 那个计数，改这里重新编译。
@@ -62,11 +85,6 @@
 #define BCAR_GYRO_DEAD_ZONE_DPS   0.3f   /* 死区：减掉零偏后小于它当 0，抑制噪声积分漂移 */
 #define BCAR_GYRO_CAL_MS          1000u  /* 上电自检 / GYROZERO 的静止采集时长 */
 #define BCAR_GYRO_CAL_SAMPLES     (BCAR_GYRO_CAL_MS / BCAR_TICK_MS)  /* 采集样本数 */
-
-/* ---- 灰度 8 路（PA0~PA7，模块供 5V、板上 1k/1.5k 分压）---- */
-#define BCAR_IR_PITCH_MM     6.0f   /* ★探头间距，待实测（量相邻两探头的中心距）*/
-#define BCAR_IR_LOST_SUM_P   0.4f   /* Σp 低于它判丢线 */
-#define BCAR_IR_CAL_SAMPLES  20u    /* 现场"教黑白"时每路平均的样本数 */
 
 /* ---- 灰度 8 路（PA0~PA7，模块供 5V、板上 1k/1.5k 分压）---- */
 #define BCAR_IR_PITCH_MM     6.0f   /* ★探头间距，待实测（量相邻两探头的中心距）*/

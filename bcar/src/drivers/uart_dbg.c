@@ -39,6 +39,22 @@ static char    *s_sink_buf = 0;
 static uint16_t s_sink_max = 0u;
 static uint16_t s_sink_len = 0u;
 
+/* ★两条发送路径必须互斥（2026-10-15 读码发现，待上板复测）：
+ * TX DMA 正在发（s_tx_busy=1、CR3.DMAT=1）时，若 CPU 再直接写 DR，两边抢同一个发送寄存器，
+ * 结果通常是 **DMA 那一笔丢掉一个字符、整行错位** —— TLM/LAP 行就这么悄悄坏掉，
+ * 而且它不报错、只在解析端现形（调参器按行解析 LAP，最怕这个）。
+ * 所以"阻塞式输出"动手前先等 DMA 收工；但**最多等 30ms**（发满一整个 TX 缓冲约 17ms），
+ * 等不到就照旧发 —— 绝不许在这里死等，那会卡住控制环。 */
+#define UART_TX_DMA_WAIT_MS  30u
+
+static void tx_dma_idle_wait(void)
+{
+    uint32_t t0 = bsp_millis();
+    while (s_tx_busy != 0u && (uint32_t)(bsp_millis() - t0) < UART_TX_DMA_WAIT_MS) {
+        /* 等 DMA 把这一笔发完（RXNE 中断不受影响，收字节照收）*/
+    }
+}
+
 static void putc_out(char c)
 {
     if (s_sink_mem) {
@@ -121,6 +137,7 @@ void uart_dbg_write(const uint8_t *data, uint16_t len)
     if (data == 0) {
         return;
     }
+    tx_dma_idle_wait();      /* 别和 TX DMA 抢发送寄存器（见上面的说明）*/
     for (i = 0u; i < len; i++) {
         while ((USART1->SR & USART_SR_TXE) == 0u) { }
         USART1->DR = data[i];
@@ -130,7 +147,11 @@ void uart_dbg_write(const uint8_t *data, uint16_t len)
 void uart_dbg_puts(const char *s)
 {
     const char *p = s;
-    while (p != 0 && *p != '\0') {
+    if (p == 0) {
+        return;
+    }
+    tx_dma_idle_wait();      /* 同上（回显/提示走这条路）*/
+    while (*p != '\0') {
         putc_out(*p);
         p++;
     }
@@ -338,6 +359,7 @@ void uart_dbg_printf(const char *fmt, ...)
 {
     va_list ap;
     s_sink_mem = 0u;
+    tx_dma_idle_wait();      /* 同上（命令回复/横幅走这条路）*/
     va_start(ap, fmt);
     fmt_core(fmt, ap);
     va_end(ap);

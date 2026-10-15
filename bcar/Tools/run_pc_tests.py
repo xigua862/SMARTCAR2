@@ -35,6 +35,7 @@ TESTS = [
                                                       "src/control/mixer.c"],   "src/control",   True),
     ("lapstat 单圈统计",    "Tools/test_lapstat.c",  ["src/middleware/lapstat.c",
                                                       "src/middleware/p2quant.c"],  "src/middleware", True),
+    ("launch 发车读秒",     "Tools/test_launch.c",   ["src/app/launch.c"],        "src/app",        False),
 ]
 
 

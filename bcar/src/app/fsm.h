@@ -13,6 +13,7 @@ typedef enum {
     FSM_BOOT = 0,   /* 上电初始化中 */
     FSM_IDLE,       /* 待机：电机刹车，等发车键 */
     FSM_TEST,       /* 测试模式：电机允许滑行/单独点动，等串口指令 */
+    FSM_COUNTDOWN,  /* 发车读秒：PC13 长按后 3 秒（短短长 3 声），到点自动进 RUN */
     FSM_RUN,        /* 运行中：循迹跑（阶段 3 以后才真正跑起来）*/
     FSM_ESTOP,      /* 急停 */
     FSM_STATE_COUNT

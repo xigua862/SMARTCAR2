@@ -667,6 +667,11 @@
           <FilePath>../src/app/fsm.c</FilePath>
         </File>
         <File>
+          <FileName>launch.c</FileName>
+          <FileType>1</FileType>
+          <FilePath>../src/app/launch.c</FilePath>
+        </File>
+        <File>
           <FileName>str_util.c</FileName>
           <FileType>1</FileType>
           <FilePath>../src/app/str_util.c</FilePath>

@@ -38,19 +38,34 @@ static uint8_t s_len = 0u;
 /* 陀螺零偏标定：跨多拍采样，所以状态放在文件作用域 */
 static heading_cal_t s_cal;
 static uint8_t       s_cal_active = 0u;
+static uint8_t       s_cal_auto   = 0u;    /* 1 = 这次是发车读秒里自动采的 */
+static float         s_cal_gz_min = 0.0f;  /* 采集期间 gz 的极值 → 判"车有没有在动" */
+static float         s_cal_gz_max = 0.0f;
+
+/** @brief 起一次零偏采集（manual = 0：手敲 GYROZERO；1：发车读秒里自动）*/
+static void gyrocal_begin(uint8_t auto_mode)
+{
+    heading_cal_begin(&s_cal);
+    s_cal_auto   = auto_mode;
+    s_cal_gz_min = 1.0e9f;
+    s_cal_gz_max = -1.0e9f;
+    s_cal_active = 1u;
+}
 
 /* ---------------- 帮助 ---------------- */
 
 static void print_help(void)
 {
     uart_dbg_puts("\r\n命令（大小写不敏感，参数用空格分隔）:\r\n");
+    uart_dbg_puts("发车流程: 上电待机(1 声) → PB0=测试模式(2 声,等串口指令)\r\n");
+    uart_dbg_puts("          / PC13 长按 200ms=发车(3 秒读秒:短短长,期间自动标陀螺零偏) → RUN\r\n");
     uart_dbg_puts("  HELP                  这页帮助\r\n");
     uart_dbg_puts("  PING                  应答 PONG（测链路）\r\n");
     uart_dbg_puts("  STATUS                当前状态/节拍/电机/按键/MOE\r\n");
     uart_dbg_puts("  MAPR                  打印 AFIO->MAPR（查重映射是否生效）\r\n");
     uart_dbg_puts("  HELLO <0|1>           每秒心跳打印开关\r\n");
     uart_dbg_puts("  BEEP [ms]             蜂鸣（默认 100ms）\r\n");
-    uart_dbg_puts("  MODE <IDLE|TEST|RUN>  切模式\r\n");
+    uart_dbg_puts("  MODE <IDLE|TEST|COUNTDOWN|RUN|ESTOP>  切模式（COUNTDOWN=3 秒读秒）\r\n");
     uart_dbg_puts("  MOTOR <dir> <mag>     两侧同设；dir=FWD|REV|BRAKE|COAST，mag=0~1000\r\n");
     uart_dbg_puts("  MOTOR L|R <dir> <mag> 只设一侧（L=PA8/PA9，R=PA10/PA11）\r\n");
     uart_dbg_puts("  KEY                   打印两个按键当前电平\r\n");
@@ -86,8 +101,9 @@ static void cmd_status(void)
     uart_dbg_printf("t = %u ms, tick = %u ms\r\n", bsp_millis(), BCAR_TICK_MS);
     uart_dbg_printf("MOTOR L: dir=%u mag=%u | R: dir=%u mag=%u  (dir: 0=FWD 1=REV 2=BRAKE 3=COAST)\r\n",
                     (unsigned)dl, (unsigned)ml, (unsigned)dr, (unsigned)mr);
-    uart_dbg_printf("KEY  START(PC13)=%u  TRIG(PB0)=%u  (1=按住)\r\n",
-                    (unsigned)key_is_down(KEY_START), (unsigned)key_is_down(KEY_TRIG));
+    uart_dbg_printf("KEY  START(PC13)=%u held=%u ms  TRIG(PB0)=%u  (1=按住)\r\n",
+                    (unsigned)key_is_down(KEY_START), (unsigned)key_hold_ms(KEY_START),
+                    (unsigned)key_is_down(KEY_TRIG));
     uart_dbg_printf("BUZZER = %u, HELLO = %u\r\n",
                     (unsigned)buzzer_is_on(), (unsigned)g_hello_en);
     uart_dbg_printf("AFIO MAPR = 0x%08X\r\n", bsp_afio_mapr());
@@ -203,16 +219,24 @@ static void execute(char *line)
             return;
         }
         su_tok(a1);
-        if (su_streq(a1, "IDLE"))       { s = FSM_IDLE; }
-        else if (su_streq(a1, "TEST"))  { s = FSM_TEST; }
-        else if (su_streq(a1, "RUN"))   { s = FSM_RUN; }
-        else if (su_streq(a1, "ESTOP")) { s = FSM_ESTOP; }
+        if (su_streq(a1, "IDLE"))           { s = FSM_IDLE; }
+        else if (su_streq(a1, "TEST"))      { s = FSM_TEST; }
+        else if (su_streq(a1, "COUNTDOWN")) { s = FSM_COUNTDOWN; }   /* 台上试读秒用 */
+        else if (su_streq(a1, "RUN"))       { s = FSM_RUN; }
+        else if (su_streq(a1, "ESTOP"))     { s = FSM_ESTOP; }
         else {
-            uart_dbg_puts("ERR 模式只能是 IDLE/TEST/RUN/ESTOP\r\n");
+            uart_dbg_puts("ERR 模式只能是 IDLE/TEST/COUNTDOWN/RUN/ESTOP\r\n");
             return;
         }
         (void)fsm_set(s);
-        uart_dbg_printf("OK MODE %s（电机已刹车）\r\n", fsm_state_name(fsm_state()));
+        uart_dbg_printf("OK MODE %s\r\n", fsm_state_name(fsm_state()));
+        if (fsm_state() == FSM_RUN) {
+            uart_dbg_puts("   （RUN：循迹环接管电机；正式发车请用 PC13 长按走读秒流程）\r\n");
+        } else if (fsm_state() == FSM_COUNTDOWN) {
+            uart_dbg_puts("   （3 秒读秒开始，短短长 3 声后自动进 RUN；PB0 可取消）\r\n");
+        } else {
+            uart_dbg_puts("   （电机已刹车）\r\n");
+        }
     } else if (su_streq(w, "MOTOR") || su_streq(w, "M")) {
         cmd_motor(line);
     } else if (su_streq(w, "IMU")) {
@@ -229,8 +253,7 @@ static void execute(char *line)
                         (int)(imu660_gyro_dps(IMU_AXIS_Y) * 10.0f),
                         (int)(imu660_gyro_dps(IMU_AXIS_Z) * 10.0f));
     } else if (su_streq(w, "GYROZERO")) {
-        heading_cal_begin(&s_cal);
-        s_cal_active = 1u;
+        gyrocal_begin(0u);
         uart_dbg_printf("GYROZERO 采集中（%u 拍 ≈ %u ms）—— 现在开始别碰车\r\n",
                         (unsigned)BCAR_GYRO_CAL_SAMPLES, (unsigned)BCAR_GYRO_CAL_MS);
     } else if (su_streq(w, "HEAD")) {
@@ -357,8 +380,10 @@ static void execute(char *line)
                         (int)(kp * 100.0f), (int)(kd * 100.0f),
                         (unsigned)control_lost_ticks(), (unsigned)control_lost_holding());
     } else if (su_streq(w, "KEY")) {
-        uart_dbg_printf("KEY START(PC13)=%u TRIG(PB0)=%u (1=按住)\r\n",
-                        (unsigned)key_is_down(KEY_START), (unsigned)key_is_down(KEY_TRIG));
+        /* held = 这一下按住多久了 —— 台上验"长按 200ms 发车"就看它 */
+        uart_dbg_printf("KEY START(PC13)=%u held=%u ms TRIG(PB0)=%u (1=按住)\r\n",
+                        (unsigned)key_is_down(KEY_START), (unsigned)key_hold_ms(KEY_START),
+                        (unsigned)key_is_down(KEY_TRIG));
     } else if (su_streq(w, "ENC")) {
         /* ★标定就看这行：推车 1 米，看 total 涨了多少 → mm_per_count = 1000/计数 */
         uart_dbg_printf("ENC L total=%d delta=%d | R total=%d delta=%d\r\n",
@@ -394,26 +419,56 @@ static void execute(char *line)
 
 /* ---------------- 陀螺零偏标定（跨多拍，所以要有状态） ---------------- */
 
+void cmdline_gyrozero_auto_begin(void)
+{
+    gyrocal_begin(1u);
+    uart_dbg_puts("[GYRO] 读秒期间自动标零偏：采 1 秒静止样本，车别动\r\n");
+}
+
 void cmdline_tick_5ms(void)
 {
     /* 标定期间：每拍采一个静止样本，够了就用均值当零偏 */
     if (s_cal_active)
     {
         float bias[3];
+        float gz;
         imu660_read();
+        gz = imu660_gyro_dps(IMU_AXIS_Z);
         heading_cal_push(&s_cal, imu660_gyro_dps(IMU_AXIS_X),
                                  imu660_gyro_dps(IMU_AXIS_Y),
-                                 imu660_gyro_dps(IMU_AXIS_Z));
+                                 gz);
+        if (gz < s_cal_gz_min) { s_cal_gz_min = gz; }
+        if (gz > s_cal_gz_max) { s_cal_gz_max = gz; }
+
         if (s_cal.n >= (uint32_t)BCAR_GYRO_CAL_SAMPLES)
         {
+            float spread = s_cal_gz_max - s_cal_gz_min;
             if (heading_cal_finish(&s_cal, bias, (uint32_t)(BCAR_GYRO_CAL_SAMPLES / 2u)))
             {
-                heading_set_bias(bias[0], bias[1], bias[2]);
-                uart_dbg_puts("\r\nGYROZERO 完成，零偏(dps) x=");
-                PRINT_FIXED("", bias[0]);
-                PRINT_FIXED(" y", bias[1]);
-                PRINT_FIXED(" z", bias[2]);
-                uart_dbg_puts("\r\n");
+                /* 自动采集时多一道门：车在动就别标 —— 那时采到的"均值"是转速不是零偏，
+                 * 标进去比不标更糟（宁可不标）。手敲 GYROZERO 不加这道门（人在看着）。 */
+                if (s_cal_auto && spread > BCAR_GYRO_AUTOCAL_MAX_SPREAD_DPS)
+                {
+                    uart_dbg_puts("\r\n[GYRO] 放弃自动标定：采集期间车在动（极差");
+                    PRINT_FIXED(" ", spread);
+                    PRINT_FIXED(" dps，限 ", BCAR_GYRO_AUTOCAL_MAX_SPREAD_DPS);
+                    uart_dbg_puts("），沿用原零偏\r\n");
+                }
+                else
+                {
+                    heading_set_bias(bias[0], bias[1], bias[2]);
+                    uart_dbg_puts(s_cal_auto ? "\r\n[GYRO] 自动标定完成，零偏(dps) x="
+                                             : "\r\nGYROZERO 完成，零偏(dps) x=");
+                    PRINT_FIXED("", bias[0]);
+                    PRINT_FIXED(" y", bias[1]);
+                    PRINT_FIXED(" z", bias[2]);
+                    if (s_cal_auto)
+                    {
+                        PRINT_FIXED("（采集极差 ", spread);
+                        uart_dbg_puts(" dps，越小越静）");
+                    }
+                    uart_dbg_puts("\r\n");
+                }
             }
             else
             {

@@ -17,6 +17,10 @@ typedef struct {
     uint16_t      cnt;         /* 连续相同的采样次数 */
     uint8_t       ev_press;
     uint8_t       ev_release;
+    uint8_t       ev_long;     /* 这一下已经报过长按（每次按住只报一次）*/
+    uint8_t       ev_short;    /* 这一下没按够长按就松手了 */
+    uint8_t       long_armed;  /* 1 = 本次按住还没报过长按 */
+    uint32_t      hold_start;  /* 按下沿的时刻（算长按用）*/
 } key_state_t;
 
 /* 按键接 GND + 内部上拉 ⇒ 按下读到 0 */
@@ -69,34 +73,56 @@ void key_init(void)
         s_keys[i].cnt     = 0u;
         s_keys[i].ev_press = 0u;
         s_keys[i].ev_release = 0u;
-        /* 上电时若已经按住，不要立刻报"按下"，等真的松手再算 */
-        if (raw == 1u) {
-            s_keys[i].stable = 1u;
-        }
+        s_keys[i].ev_long  = 0u;
+        s_keys[i].ev_short = 0u;
+        /* 上电时若已经按住，不要立刻报"按下"，等真的松手再算。
+         * ★同理也不给长按计时起头（long_armed = 0）——否则上电时手按在
+         * 发车键上就会"自动发车"。 */
+        s_keys[i].long_armed = 0u;
+        s_keys[i].hold_start = 0u;
     }
 }
 
 void key_poll(void)
 {
-    uint8_t i;
+    uint8_t  i;
+    uint32_t now = bsp_millis();
+
     for (i = 0u; i < (uint8_t)KEY_COUNT; i++) {
         uint8_t raw = key_raw(s_keys[i].port, s_keys[i].pin);
 
         if (raw != s_keys[i].last_raw) {
             s_keys[i].last_raw = raw;
             s_keys[i].cnt = 1u;
-            continue;
+        } else {
+            if (s_keys[i].cnt < 0xFFFFu) {
+                s_keys[i].cnt++;
+            }
+            if (s_keys[i].cnt >= (uint16_t)KEY_STABLE_TICKS && raw != s_keys[i].stable) {
+                s_keys[i].stable = raw;
+                s_keys[i].cnt    = 0u;
+                if (raw == 1u) {
+                    s_keys[i].ev_press   = 1u;    /* 按下沿 */
+                    s_keys[i].hold_start = now;   /* 长按从这里计时 */
+                    s_keys[i].long_armed = 1u;
+                } else {
+                    s_keys[i].ev_release = 1u;    /* 松开沿 */
+                    /* 松手时还没报过长按 ⇒ 这一下是短按（发车键用它提示"要长按"）*/
+                    if (s_keys[i].long_armed) {
+                        s_keys[i].ev_short = 1u;
+                    }
+                    s_keys[i].long_armed = 0u;
+                }
+            }
         }
-        if (s_keys[i].cnt < 0xFFFFu) {
-            s_keys[i].cnt++;
-        }
-        if (s_keys[i].cnt >= (uint16_t)KEY_STABLE_TICKS && raw != s_keys[i].stable) {
-            s_keys[i].stable = raw;
-            s_keys[i].cnt    = 0u;
-            if (raw == 1u) {
-                s_keys[i].ev_press = 1u;      /* 按下沿 */
-            } else {
-                s_keys[i].ev_release = 1u;    /* 松开沿 */
+
+        /* 长按判定：不用等状态变化，每拍都查（按住不动时上面那两个分支都不走，
+         * 正是这里把它抓出来）。够门限只报一次；报过就撤掉 long_armed，
+         * 松手时才不会被误算成"短按"。 */
+        if (s_keys[i].stable == 1u && s_keys[i].long_armed) {
+            if ((uint32_t)(now - s_keys[i].hold_start) >= (uint32_t)BCAR_KEY_LONG_MS) {
+                s_keys[i].ev_long    = 1u;
+                s_keys[i].long_armed = 0u;
             }
         }
     }
@@ -124,10 +150,40 @@ uint8_t key_take_release(key_id_t id)
     return v;
 }
 
+uint8_t key_take_long(key_id_t id)
+{
+    uint8_t v;
+    if ((uint8_t)id >= (uint8_t)KEY_COUNT) {
+        return 0u;
+    }
+    v = s_keys[id].ev_long;
+    s_keys[id].ev_long = 0u;
+    return v;
+}
+
+uint8_t key_take_short(key_id_t id)
+{
+    uint8_t v;
+    if ((uint8_t)id >= (uint8_t)KEY_COUNT) {
+        return 0u;
+    }
+    v = s_keys[id].ev_short;
+    s_keys[id].ev_short = 0u;
+    return v;
+}
+
 uint8_t key_is_down(key_id_t id)
 {
     if ((uint8_t)id >= (uint8_t)KEY_COUNT) {
         return 0u;
     }
     return s_keys[id].stable;
+}
+
+uint32_t key_hold_ms(key_id_t id)
+{
+    if ((uint8_t)id >= (uint8_t)KEY_COUNT || s_keys[id].stable != 1u) {
+        return 0u;
+    }
+    return (uint32_t)(bsp_millis() - s_keys[id].hold_start);
 }

@@ -38,6 +38,7 @@
 #include "heading.h"
 #include "odom.h"
 #include "fsm.h"
+#include "launch.h"
 #include "cmdline.h"
 #include "telemetry.h"
 #include "control.h"
@@ -81,6 +82,10 @@ static uint8_t  s_chase   = 0u;   /* 走马灯位置 0/1/2=亮某只，3=全灭 
  * 控制环的接管(control_enter_run)/交还(control_exit_run)必须挂在状态边沿上，
  * 否则 s_running 永远是 0，control_step() 直接 return —— 看着像在闭环，其实电机收不到任何指令。*/
 static fsm_state_t s_fsm_prev = FSM_BOOT;
+
+/* 发车读秒（PC13 长按 → 3 秒 / 短短长 3 声 → RUN）。
+ * 时序逻辑在 app/launch.c（纯逻辑、PC 可单测），这里只管"事件 → 动作"。 */
+static launch_t s_launch;
 
 /* 最近一次的灰度结果（8 路归一化值 + 偏差）。
  * 放全局是为了让 cmdline 能直接打印 —— 阶段 6 起转向环也读它。 */
@@ -204,12 +209,18 @@ int main(void)
   /* 进入待机：电机刹车，等发车键或串口命令 */
   (void)fsm_set(FSM_IDLE);
 
-  /* 上电自检：响一声 + 三灯全亮一下，证明"人机通路"是活的 */
+  /* 上电自检：响一声 + 三灯全亮一下，证明"人机通路"是活的。
+   * ★这"1 声"就是发车流程的第一步：上电 1 声 = 待机中。 */
   buzzer_beep(120u);
   led_on(LED1); led_on(LED2); led_on(LED3);
   HAL_Delay(150);
   led_all_off();
 
+  /* 发车流程（2026-10-15 用户定的口径，en 手边看一眼就知道怎么发车）*/
+  uart_dbg_puts("\r\n[待机] 上电 1 声 = 已待机。发车流程：\r\n");
+  uart_dbg_puts("       PB0 → 测试模式（蜂鸣 2 声，之后等串口指令，调参器在这个模式跑）\r\n");
+  uart_dbg_printf("       PC13 长按 %u ms → 发车：3 秒读秒（短短长 3 声）→ 循迹\r\n",
+                  (unsigned)BCAR_KEY_LONG_MS);
   uart_dbg_puts("stage2 ready: LED chaser 500ms, hello 1/s, 打 HELP 看命令\r\n");
   /* USER CODE END 2 */
 
@@ -247,6 +258,58 @@ int main(void)
       /* 灰度 → 线偏差（err/visible 都在 s_line_out 里，阶段 7 起给转向环用）*/
       s_line_out = line_pos_step(adc_ir_raw_all());
 
+      /* --- 按键事件（先处理；后面的状态边沿同拍就能看到新状态）--- */
+
+      /* PB0（KEY1）→ 测试模式：蜂鸣 2 声，之后等串口指令（调参器在这里跑）。
+       * ★读秒中按它 = 取消发车（下面边沿块会把读秒掐掉）；RUN 中按它 = 停车交还。 */
+      if (key_take_press(KEY_TRIG))
+      {
+        (void)fsm_set(FSM_TEST);
+        buzzer_beeps(2u, (uint16_t)BCAR_BEEP_SHORT_MS, (uint16_t)BCAR_BEEP_GAP_MS);
+        uart_dbg_puts("\r\n[KEY] PB0 → 测试模式（蜂鸣 2 声）：等串口指令\r\n");
+      }
+
+      /* PC13 短按 → 不发车（用户口径：短按不响应）。提示一句，免得以为板子死了 */
+      if (key_take_short(KEY_START))
+      {
+        uart_dbg_printf("\r\n[KEY] PC13 短按忽略（发车要长按 %u ms）\r\n",
+                        (unsigned)BCAR_KEY_LONG_MS);
+      }
+
+      /* PC13（KEY2）长按 → 正式发车：进读秒 */
+      if (key_take_long(KEY_START))
+      {
+        fsm_state_t st = fsm_state();
+        if (st == FSM_IDLE || st == FSM_TEST)
+        {
+          (void)fsm_set(FSM_COUNTDOWN);
+        }
+        else
+        {
+          uart_dbg_printf("\r\n[KEY] PC13 长按：当前是 %s，不发车（要停在待机/测试模式才能发车）\r\n",
+                          fsm_state_name(st));
+        }
+      }
+
+      /* --- 发车读秒：3 秒内短短长 3 声，到点自动起跑 --- */
+      if (fsm_state() == FSM_COUNTDOWN)
+      {
+        launch_ev_t lev = launch_step(&s_launch, bsp_millis());
+        if (lev == LAUNCH_EV_BEEP_SHORT)
+        {
+          buzzer_beep(BCAR_BEEP_SHORT_MS);
+        }
+        else if (lev == LAUNCH_EV_BEEP_LONG)
+        {
+          buzzer_beep(BCAR_BEEP_LONG_MS);
+        }
+        else if (lev == LAUNCH_EV_DONE)
+        {
+          (void)fsm_set(FSM_RUN);
+          uart_dbg_puts("[LAUNCH] 读秒结束 → RUN：循迹开始\r\n");
+        }
+      }
+
       /* ★循迹控制：挂在状态边沿上接管/交还电机，且只在 RUN 里真正驱动。
        * ★2026-10-15 补：原来只调了 control_step()，而 control_enter_run()/exit_run()
        * 全项目没人调用 ⇒ s_running 恒为 0 ⇒ 这个"闭环"其实是死的（按发车键车不动）。
@@ -255,8 +318,40 @@ int main(void)
         fsm_state_t st = fsm_state();
         if (st != s_fsm_prev)
         {
+          /* 读秒没走完就切走了（多半是按 PB0 取消）⇒ 把时序器掐掉，别留着半截读秒 */
+          if (s_fsm_prev == FSM_COUNTDOWN && st != FSM_COUNTDOWN)
+          {
+            if (launch_active(&s_launch))
+            {
+              launch_abort(&s_launch);
+              uart_dbg_puts("[LAUNCH] 读秒被取消，没起跑\r\n");
+            }
+          }
+
+          if (st == FSM_COUNTDOWN)
+          {
+            /* 读秒这 3 秒：车摆在发车点（赛道图上那个"小蓝框" = nav_map 的 s=0，车头朝 S），
+             * 电机已刹车、纹丝不动 —— 正好拿来标陀螺零偏。 */
+            launch_begin(&s_launch, bsp_millis());
+#if (BCAR_GYRO_AUTOCAL_ON_LAUNCH)
+            /* 不标的话实测有 ≈0.4 dps 的原始零偏，跑一圈航向能飘十几度，而且不报错 */
+            cmdline_gyrozero_auto_begin();
+#endif
+            uart_dbg_puts("[LAUNCH] 开始读秒（车别动：正在标陀螺零偏）\r\n");
+          }
+
           if (st == FSM_RUN)
           {
+            /* ★发车锚定：把里程/位姿/航向清到发车点这一点 ⇒ 之后 odom 的 s 就是
+             * "从发车点跑出多远"、航向 0 = 发车方向（车头朝 S）。
+             * ★放在"进 RUN 这一刻"而不是读秒开始，是为了让零偏标定先落地 ——
+             *   否则读秒头 1 秒还在用旧零偏，会把航向带偏零点几度。
+             * ⚠ 地图坐标 (2772, 203) 与航向 180° 的换算等地图进固件时统一做
+             *   （含"地图 yaw 顺时针为正"与陀螺逆时针为正的符号），见交接文档待办。 */
+            heading_reset();
+            encoder_reset();
+            odom_reset();
+            telemetry_start_lap();   /* 本圈统计从起跑算，别把站着读秒的 3 秒算进去 */
             control_enter_run();
             uart_dbg_printf("[CTRL] 进入 RUN：转向环接管（BASE=%u）\r\n",
                             (unsigned)control_base());
@@ -284,21 +379,6 @@ int main(void)
 
       /* 跨多拍的命令（陀螺零偏标定）在这里推进 */
       cmdline_tick_5ms();
-
-      /* --- 按键事件 --- */
-      if (key_take_press(KEY_TRIG))          /* PB0：进测试模式 */
-      {
-        (void)fsm_set(FSM_TEST);
-        uart_dbg_printf("\r\n[KEY] PB0 → MODE TEST（电机滑行可用）\r\n");
-        buzzer_beep(60u);
-      }
-      if (key_take_press(KEY_START))         /* PC13：发车 */
-      {
-        /* 运动学还没写（阶段 3），先只切状态 + 报一声，别真跑 */
-        (void)fsm_set(FSM_RUN);
-        uart_dbg_printf("\r\n[KEY] PC13 → MODE RUN（注意：循迹还没接，车不会自己走）\r\n");
-        buzzer_beep(200u);
-      }
     }
 
     /* 串口命令（行式，收到换行才执行）—— 每圈都查，别等 5ms 拍 */
