@@ -172,17 +172,24 @@ int main(void)
   /* 灰度 8 路：ADC 扫描 + DMA 一开就一直在后台滚，CPU 不用管 */
   adc_ir_init();
   {
+    /* 逐路黑白基准：2026-10-15 在**真赛道材料**上实测（见 bcar_config.h 里的说明）。
+     * 不再是"猜的 200/3000"，所以上电就是标定好的状态 —— 现场不用每次教。 */
+    static const float k_ir_black[LINE_CH] = BCAR_IR_BLACK_ARR;
+    static const float k_ir_white[LINE_CH] = BCAR_IR_WHITE_ARR;
     line_pos_cfg_t lc;
     uint8_t k;
+    /* 数组长度和通道数对不上就编译不过（换模块/换路数时防呆）*/
+    typedef char ir_ref_len_chk[(sizeof(k_ir_black) / sizeof(k_ir_black[0]) == (size_t)LINE_CH) ? 1 : -1];
+
     for (k = 0u; k < LINE_CH; k++) {
       lc.pos_mm[k] = ((float)k - 3.5f) * BCAR_IR_PITCH_MM;
-      lc.black[k]  = 200.0f;    /* ★默认值只是占位，现场用 IRBLACK / IRWHITE 教一遍 */
-      lc.white[k]  = 3000.0f;
+      lc.black[k]  = k_ir_black[k];
+      lc.white[k]  = k_ir_white[k];
     }
     lc.lost_sum_p = BCAR_IR_LOST_SUM_P;
     line_pos_init(&lc);
   }
-  uart_dbg_printf("IR 8ch ADC+DMA ready (间距 x100 = %u, 黑白基准待现场标定)\r\n",
+  uart_dbg_printf("IR 8ch ADC+DMA ready (间距 x100 = %u, 黑白基准 = 实测值)\r\n",
                   (unsigned)(BCAR_IR_PITCH_MM * 100.0f));
 
   /* 遥测：每圈结算 + 可选实时行（都走 TX DMA）*/
