@@ -77,6 +77,10 @@ static uint32_t s_t_led   = 0u;   /* 500ms 走马灯 */
 static uint32_t s_t_print = 0u;   /* 1000ms 串口心跳 */
 static uint32_t s_hello   = 0u;   /* 心跳序号，用来验证"每秒一条不丢" */
 static uint8_t  s_chase   = 0u;   /* 走马灯位置 0/1/2=亮某只，3=全灭 */
+/* ★上一拍的状态机状态：用来抓"进/出 RUN"的边沿。
+ * 控制环的接管(control_enter_run)/交还(control_exit_run)必须挂在状态边沿上，
+ * 否则 s_running 永远是 0，control_step() 直接 return —— 看着像在闭环，其实电机收不到任何指令。*/
+static fsm_state_t s_fsm_prev = FSM_BOOT;
 
 /* 最近一次的灰度结果（8 路归一化值 + 偏差）。
  * 放全局是为了让 cmdline 能直接打印 —— 阶段 6 起转向环也读它。 */
@@ -243,10 +247,31 @@ int main(void)
       /* 灰度 → 线偏差（err/visible 都在 s_line_out 里，阶段 7 起给转向环用）*/
       s_line_out = line_pos_step(adc_ir_raw_all());
 
-      /* ★循迹控制：只在 RUN 状态真正驱动电机 */
-      if (fsm_state() == FSM_RUN)
+      /* ★循迹控制：挂在状态边沿上接管/交还电机，且只在 RUN 里真正驱动。
+       * ★2026-10-15 补：原来只调了 control_step()，而 control_enter_run()/exit_run()
+       * 全项目没人调用 ⇒ s_running 恒为 0 ⇒ 这个"闭环"其实是死的（按发车键车不动）。
+       * 进 RUN → 接管（清微分历史、清丢线计数）；离开 RUN → 交还（强制刹车）。 */
       {
-        control_step(s_line_out.err_mm, s_line_out.visible);
+        fsm_state_t st = fsm_state();
+        if (st != s_fsm_prev)
+        {
+          if (st == FSM_RUN)
+          {
+            control_enter_run();
+            uart_dbg_printf("[CTRL] 进入 RUN：转向环接管（BASE=%u）\r\n",
+                            (unsigned)control_base());
+          }
+          else if (s_fsm_prev == FSM_RUN)
+          {
+            control_exit_run();
+            uart_dbg_puts("[CTRL] 离开 RUN：转向环交还，电机已刹车\r\n");
+          }
+          s_fsm_prev = st;
+        }
+        if (st == FSM_RUN)
+        {
+          control_step(s_line_out.err_mm, s_line_out.visible);
+        }
       }
 
       /* 遥测：把这拍的数据喂进本圈统计（顺带按需发实时行）*/

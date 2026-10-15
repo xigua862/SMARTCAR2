@@ -67,7 +67,7 @@ static void print_help(void)
     uart_dbg_puts("  LAP                   结算当前圈并发一行 LAP（走 DMA），然后自动进下一圈\r\n");
     uart_dbg_puts("  LAPSTART              丢弃当前累积，重开一圈\r\n");
     uart_dbg_puts("  TLM <0|1>             实时行开关（每 100ms 一行 err/vis/v/yaw/lost）\r\n");
-    uart_dbg_puts("  PD <kp*100> <kd*100>  现场改转向增益（如 PD 2500 300 = kp2.5? 见下）\r\n");
+    uart_dbg_puts("  PD <kp*100> <kd*100>  现场改转向增益（PD 2500 300 → kp=25.00 kd=3.00）\r\n");
     uart_dbg_puts("  BASE <mag>            现场改循迹速度基准（0~1000）\r\n");
     uart_dbg_puts("  GAIN                  看当前增益与速度基准\r\n");
     uart_dbg_puts("  LOOPBACK [ms]         TX-RX 短接时的回环自检（默认 200ms）\r\n");
