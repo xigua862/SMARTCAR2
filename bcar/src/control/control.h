@@ -51,6 +51,9 @@ float control_v_target(void);
 void control_set_str_on(uint8_t on);
 uint8_t control_str_on(void);
 
+/** @brief 最后一次真正下发的转向量（诊断：看它有没有一直被顶在限幅上）*/
+float control_steer_last(void);
+
 /** @brief 速度环当前输出（诊断/串口看）*/
 float control_vel_out(void);
 /** @brief 速度环是否开着 */

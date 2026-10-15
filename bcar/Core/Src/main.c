@@ -490,7 +490,8 @@ int main(void)
       telemetry_tick(s_line_out.err_mm, s_line_out.visible,
                      odom_get().v_mm_s,
                      s_ds_mm,                 /* 本拍弧长（上面算好的）*/
-                     heading_yaw_deg());
+                     heading_yaw_deg(),
+                     control_steer_last());   /* 实际下发的转向量（调参就看它）*/
 
       /* 跨多拍的命令（陀螺零偏标定）在这里推进 */
       cmdline_tick_5ms();

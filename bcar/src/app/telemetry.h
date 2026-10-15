@@ -25,7 +25,7 @@ void telemetry_init(void);
   * @param  yaw_deg 当前航向（实时行里显示，便于手推车时看惯导对不对）
   */
 void telemetry_tick(float err_mm, uint8_t visible, float v_mm_s,
-                    float ds_mm, float yaw_deg);
+                    float ds_mm, float yaw_deg, float steer);
 
 /** @brief 开新圈（清零累加器，圈号 +1）*/
 void telemetry_start_lap(void);

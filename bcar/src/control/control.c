@@ -26,6 +26,7 @@ static float      s_v_target = BCAR_V_TARGET_MS;
 static uint8_t    s_vel_on   = (uint8_t)BCAR_VEL_ON;
 static uint8_t    s_str_on   = (uint8_t)BCAR_STR_ON;   /* 陀螺直行开关（用户要求先关掉）*/
 static float      s_steer_prev = 0.0f;                 /* 上一次给出去的转向量（做变化率限幅用）*/
+static float      s_steer_last = 0.0f;                 /* 最后一次真正下发的转向量（遥测看）*/
 static uint32_t   s_vramp    = 0u;    /* 起步时目标速度的斜坡计数 */
 #define CTRL_VRAMP_TICKS  ((uint32_t)(BCAR_V_RAMP_MS / BCAR_TICK_MS))
 static uint8_t    s_vis_run = 0u;     /* 连续多少拍"看得见线"（去抖用）*/
@@ -138,6 +139,11 @@ void control_set_str_on(uint8_t on)
     if (s_str_on == 0u) {
         s_mode = CTRL_MODE_LINE;
     }
+}
+
+float control_steer_last(void)
+{
+    return s_steer_last;
 }
 
 uint8_t control_str_on(void)
@@ -262,6 +268,7 @@ static void drive(float base, float steer)
     if (steer < -lim) { steer = -lim; }
 
     steer = steer_slew(steer);
+    s_steer_last = steer;
 
     mix_out_t m = mixer_step(base, steer, BCAR_MOTION_MIN_MAG);
 

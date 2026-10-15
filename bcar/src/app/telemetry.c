@@ -32,7 +32,7 @@ void telemetry_init(void)
 }
 
 void telemetry_tick(float err_mm, uint8_t visible, float v_mm_s,
-                    float ds_mm, float yaw_deg)
+                    float ds_mm, float yaw_deg, float steer)
 {
     uint16_t n;
 
