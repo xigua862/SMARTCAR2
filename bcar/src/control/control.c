@@ -252,6 +252,15 @@ static float steer_slew(float steer)
 
 static void drive(float base, float steer)
 {
+    float lim;
+
+    /* ★转向量按基础占空比成比例限幅：内侧轮不许反转（否则车原地拧、头甩出去）。
+     * 拐 R200 只要 0.55×base，这里给 0.9×base，够拐弯但不会拧车。 */
+    lim = base * BCAR_CTRL_STEER_BASE_P;
+    if (lim > BCAR_CTRL_STEER_MAX) { lim = BCAR_CTRL_STEER_MAX; }
+    if (steer >  lim) { steer =  lim; }
+    if (steer < -lim) { steer = -lim; }
+
     steer = steer_slew(steer);
 
     mix_out_t m = mixer_step(base, steer, BCAR_MOTION_MIN_MAG);
