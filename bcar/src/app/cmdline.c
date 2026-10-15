@@ -15,6 +15,7 @@
 #include "led.h"
 #include "motor.h"
 #include "adc_ir.h"
+#include "control.h"
 #include "encoder.h"
 #include "imu660.h"
 #include "line_pos.h"
@@ -66,6 +67,9 @@ static void print_help(void)
     uart_dbg_puts("  LAP                   结算当前圈并发一行 LAP（走 DMA），然后自动进下一圈\r\n");
     uart_dbg_puts("  LAPSTART              丢弃当前累积，重开一圈\r\n");
     uart_dbg_puts("  TLM <0|1>             实时行开关（每 100ms 一行 err/vis/v/yaw/lost）\r\n");
+    uart_dbg_puts("  PD <kp*100> <kd*100>  现场改转向增益（如 PD 2500 300 = kp2.5? 见下）\r\n");
+    uart_dbg_puts("  BASE <mag>            现场改循迹速度基准（0~1000）\r\n");
+    uart_dbg_puts("  GAIN                  看当前增益与速度基准\r\n");
     uart_dbg_puts("  LOOPBACK [ms]         TX-RX 短接时的回环自检（默认 200ms）\r\n");
 }
 
@@ -316,6 +320,42 @@ static void execute(char *line)
         uart_dbg_printf("OK TLM=%u（%s）\r\n",
                         (unsigned)telemetry_realtime(),
                         telemetry_realtime() ? "每 100ms 一行" : "已关");
+    } else if (su_streq(w, "PD")) {
+        char *a1 = su_arg(line, 1u);
+        char *a2 = su_arg(line, 2u);
+        if (a1 == 0 || a2 == 0) {
+            uart_dbg_puts("ERR 用法: PD <kp*100> <kd*100>，例如 PD 2500 300 → kp=25.0 kd=3.0\r\n");
+        } else {
+            uint32_t kp100 = 0u, kd100 = 0u;
+            su_tok(a1); su_tok(a2);
+            if (su_parse_u32(a1, &kp100) && su_parse_u32(a2, &kd100)) {
+                control_set_pd((float)kp100 / 100.0f, (float)kd100 / 100.0f);
+                {
+                    float kp = 0.0f, kd = 0.0f;
+                    control_get_pd(&kp, &kd);
+                    uart_dbg_printf("OK PD kp=%u.%02u kd=%u.%02u\r\n",
+                                    (unsigned)(kp100 / 100u), (unsigned)(kp100 % 100u),
+                                    (unsigned)(kd100 / 100u), (unsigned)(kd100 % 100u));
+                }
+            } else {
+                uart_dbg_puts("ERR 增益必须是整数（按 1/100 记）\r\n");
+            }
+        }
+    } else if (su_streq(w, "BASE")) {
+        uint32_t v = 0u;
+        if (arg_u32(line, &v) && v <= 1000u) {
+            control_set_base((uint16_t)v);
+            uart_dbg_printf("OK BASE=%u\r\n", (unsigned)control_base());
+        } else {
+            uart_dbg_puts("ERR 用法: BASE <0..1000>\r\n");
+        }
+    } else if (su_streq(w, "GAIN")) {
+        float kp = 0.0f, kd = 0.0f;
+        control_get_pd(&kp, &kd);
+        uart_dbg_printf("BASE=%u kp_x100=%d kd_x100=%d lost_ticks=%u holding=%u\r\n",
+                        (unsigned)control_base(),
+                        (int)(kp * 100.0f), (int)(kd * 100.0f),
+                        (unsigned)control_lost_ticks(), (unsigned)control_lost_holding());
     } else if (su_streq(w, "KEY")) {
         uart_dbg_printf("KEY START(PC13)=%u TRIG(PB0)=%u (1=按住)\r\n",
                         (unsigned)key_is_down(KEY_START), (unsigned)key_is_down(KEY_TRIG));

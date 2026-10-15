@@ -538,7 +538,7 @@
             </File>
           </Files>
         </Group>
-        <Group>
+      <Group>
         <GroupName>src/bsp</GroupName>
         <Files>
         <File>
@@ -630,6 +630,26 @@
           <FileName>p2quant.c</FileName>
           <FileType>1</FileType>
           <FilePath>../src/middleware/p2quant.c</FilePath>
+        </File>
+        </Files>
+      </Group>
+      <Group>
+        <GroupName>src/control</GroupName>
+        <Files>
+        <File>
+          <FileName>angle_pd.c</FileName>
+          <FileType>1</FileType>
+          <FilePath>../src/control/angle_pd.c</FilePath>
+        </File>
+        <File>
+          <FileName>control.c</FileName>
+          <FileType>1</FileType>
+          <FilePath>../src/control/control.c</FilePath>
+        </File>
+        <File>
+          <FileName>mixer.c</FileName>
+          <FileType>1</FileType>
+          <FilePath>../src/control/mixer.c</FilePath>
         </File>
         </Files>
       </Group>

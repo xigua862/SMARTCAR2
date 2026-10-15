@@ -73,4 +73,11 @@
 #define BCAR_IR_LOST_SUM_P   0.4f   /* Σp 低于它判丢线 */
 #define BCAR_IR_CAL_SAMPLES  20u    /* 现场"教黑白"时每路平均的样本数 */
 
+/* ---- 循迹控制（阶段 7 起步版：只闭环转向，速度先固定）---- */
+#define BCAR_CTRL_BASE_MAG     350u    /* 起步速度：先慢。能跑通一圈再往上提 */
+#define BCAR_CTRL_KP           25.0f   /* 转向 P：mag / mm（误差 10mm → 转向量 250）*/
+#define BCAR_CTRL_KD            3.0f   /* 转向 D：mag / mm（抑制过冲）*/
+#define BCAR_CTRL_STEER_MAX   600.0f   /* 转向量限幅 */
+#define BCAR_CTRL_LOST_TICKS    40u    /* 丢线容忍：40 拍 = 200ms，超了就停 */
+
 #endif /* __BCAR_CONFIG_H */

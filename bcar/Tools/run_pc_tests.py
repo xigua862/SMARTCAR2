@@ -31,6 +31,8 @@ TESTS = [
     ("heading 陀螺航向",    "Tools/test_heading.c", ["src/middleware/heading.c"], "src/middleware", True),
     ("line_pos 灰度质心",   "Tools/test_line_pos.c", ["src/middleware/line_pos.c"], "src/middleware", True),
     ("p2quant P²分位",      "Tools/test_p2quant.c",  ["src/middleware/p2quant.c"],  "src/middleware", True),
+    ("control 循迹控制环",  "Tools/test_control.c", ["src/control/angle_pd.c",
+                                                      "src/control/mixer.c"],   "src/control",   True),
     ("lapstat 单圈统计",    "Tools/test_lapstat.c",  ["src/middleware/lapstat.c",
                                                       "src/middleware/p2quant.c"],  "src/middleware", True),
 ]

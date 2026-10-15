@@ -40,6 +40,7 @@
 #include "fsm.h"
 #include "cmdline.h"
 #include "telemetry.h"
+#include "control.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -178,6 +179,9 @@ int main(void)
   /* 遥测：每圈结算 + 可选实时行（都走 TX DMA）*/
   telemetry_init();
 
+  /* 循迹控制环（转向 PD + 差速混合）：初始化但还没启动，等进 RUN 才动 */
+  control_init();
+
   /* ★IMU（SPI2 + DRDY 外部中断）
    * 2026-10-15 补：之前**漏了 imu660_init() 这一句** ⇒ SPI2 从没被使能（SPE=0），
    * 一敲 IMU 命令就死在 spi2_xfer 里等 RXNE（整机假死、连 hello 心跳都停）。
@@ -238,6 +242,12 @@ int main(void)
 
       /* 灰度 → 线偏差（err/visible 都在 s_line_out 里，阶段 7 起给转向环用）*/
       s_line_out = line_pos_step(adc_ir_raw_all());
+
+      /* ★循迹控制：只在 RUN 状态真正驱动电机 */
+      if (fsm_state() == FSM_RUN)
+      {
+        control_step(s_line_out.err_mm, s_line_out.visible);
+      }
 
       /* 遥测：把这拍的数据喂进本圈统计（顺带按需发实时行）*/
       telemetry_tick(s_line_out.err_mm, s_line_out.visible,
