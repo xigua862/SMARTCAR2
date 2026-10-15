@@ -146,8 +146,9 @@ int main(void)
   cmdline_init();
   fsm_init();
 
-  /* 上电横幅：把关键事实打出来自证（MAPR 是"重映射有没有生效"的判据）*/
-  uart_dbg_printf("\r\n\r\n=== %s ===\r\n", BCAR_FW_VERSION);
+  /* 上电横幅：把关键事实打出来自证（MAPR 是"重映射有没有生效"的判据；
+   * built 后面是**编译时间戳**，跟 hex 的文件时间一比就知道板上是不是最新那版）*/
+  uart_dbg_printf("\r\n\r\n=== %s === built %s\r\n", BCAR_FW_VERSION, BCAR_FW_BUILD);
   uart_dbg_printf("MAPR = 0x%08X  (%s)\r\n",
                   bsp_afio_mapr(), bsp_afio_mapr_explain(bsp_afio_mapr()));
   uart_dbg_printf("SYSCLK = %u Hz, PCLK2 = %u Hz, tick = %u ms\r\n",
@@ -295,32 +296,24 @@ int main(void)
         float s_now = odom_get().s_mm;
         if (fsm_state() != FSM_RUN)
         {
-          uart_dbg_printf("
-[MARK] 斑马线（当前 %s，不计入）s=%d mm
-",
+          uart_dbg_printf("\r\n[MARK] 斑马线（当前 %s，不计入）s=%d mm\r\n",
                           fsm_state_name(fsm_state()), (int)s_now);
         }
         else if (s_mark_count == 0u && s_now < BCAR_MARK_S_WINDOW_MM)
         {
           s_mark_count = 1u;
-          uart_dbg_printf("
-[MARK] 过 S（第 1 条斑马线）s=%d mm
-", (int)s_now);
+          uart_dbg_printf("\r\n[MARK] 过 S（第 1 条斑马线）s=%d mm\r\n", (int)s_now);
         }
         else if (s_now > BCAR_FINISH_MIN_MM)
         {
           s_mark_count = 2u;
-          uart_dbg_puts("
-[FINISH] 过 G（第 2 条斑马线）→ 停车
-");
+          uart_dbg_puts("\r\n[FINISH] 过 G（第 2 条斑马线）→ 停车\r\n");
           buzzer_beeps(3u, (uint16_t)BCAR_BEEP_SHORT_MS, (uint16_t)BCAR_BEEP_GAP_MS);
           (void)fsm_set(FSM_IDLE);       /* 离开 RUN 会自动刹车（见边沿处理）*/
         }
         else
         {
-          uart_dbg_printf("
-[MARK] 斑马线（s=%d mm 不在判定窗口，按误判忽略）
-", (int)s_now);
+          uart_dbg_printf("\r\n[MARK] 斑马线（s=%d mm 不在判定窗口，按误判忽略）\r\n", (int)s_now);
         }
       }
 
@@ -329,9 +322,7 @@ int main(void)
           && odom_get().s_mm > BCAR_FINISH_ODOM_MM)
       {
         s_mark_count = 2u;
-        uart_dbg_printf("
-[FINISH] 里程到一圈（s=%d mm，斑马线没认出来）→ 停车
-",
+        uart_dbg_printf("\r\n[FINISH] 里程到一圈（s=%d mm，斑马线没认出来）→ 停车\r\n",
                         (int)odom_get().s_mm);
         buzzer_beeps(3u, (uint16_t)BCAR_BEEP_SHORT_MS, (uint16_t)BCAR_BEEP_GAP_MS);
         (void)fsm_set(FSM_IDLE);
@@ -458,30 +449,18 @@ int main(void)
             if (s_mark_count == 0u && s_now < BCAR_MARK_S_WINDOW_MM)
             {
               s_mark_count = 1u;
-              uart_dbg_printf("
-
-[MARK] 过 S（第 1 条斑马线）s=%d mm
-
-", (int)s_now);
+              uart_dbg_printf("\r\n[MARK] 过 S（第 1 条斑马线）s=%d mm\r\n", (int)s_now);
             }
             else if (s_now > BCAR_FINISH_MIN_MM)
             {
               s_mark_count = 2u;
-              uart_dbg_puts("
-
-[FINISH] 过 G（第 2 条斑马线）→ 停车
-
-");
+              uart_dbg_puts("\r\n[FINISH] 过 G（第 2 条斑马线）→ 停车\r\n");
               buzzer_beeps(3u, (uint16_t)BCAR_BEEP_SHORT_MS, (uint16_t)BCAR_BEEP_GAP_MS);
               (void)fsm_set(FSM_IDLE);       /* 离开 RUN 会自动刹车（见上面的边沿处理）*/
             }
             else
             {
-              uart_dbg_printf("
-
-[MARK] 斑马线（s=%d mm 不在判定窗口，按误判忽略）
-
-", (int)s_now);
+              uart_dbg_printf("\r\n[MARK] 斑马线（s=%d mm 不在判定窗口，按误判忽略）\r\n", (int)s_now);
             }
           }
           else if (s_mark_count == 1u && odom_get().s_mm > BCAR_FINISH_ODOM_MM)
@@ -489,11 +468,7 @@ int main(void)
             /* 兜底：斑马线万一没认出来（白条只有 18mm，位置不巧就可能漏），
              * 里程到一圈也停车 —— 宁可停早点，也别一直冲。 */
             s_mark_count = 2u;
-            uart_dbg_printf("
-
-[FINISH] 里程到一圈（s=%d mm，斑马线没认出来）→ 停车
-
-",
+            uart_dbg_printf("\r\n[FINISH] 里程到一圈（s=%d mm，斑马线没认出来）→ 停车\r\n",
                             (int)odom_get().s_mm);
             buzzer_beeps(3u, (uint16_t)BCAR_BEEP_SHORT_MS, (uint16_t)BCAR_BEEP_GAP_MS);
             (void)fsm_set(FSM_IDLE);

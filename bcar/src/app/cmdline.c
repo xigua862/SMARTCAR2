@@ -99,6 +99,8 @@ static void cmd_status(void)
     motor_get_last(MOTOR_L, &dl, &ml);
     motor_get_last(MOTOR_R, &dr, &mr);
 
+    /* 版本 + 编译时间戳：对着 hex 的文件时间一比，就知道板上是不是最新那版 */
+    uart_dbg_printf("FW %s built %s\r\n", BCAR_FW_VERSION, BCAR_FW_BUILD);
     uart_dbg_printf("STATE = %s  (进入于 %u ms)\r\n",
                     fsm_state_name(fsm_state()), bsp_millis() - fsm_state_enter_ms());
     uart_dbg_printf("t = %u ms, tick = %u ms\r\n", bsp_millis(), BCAR_TICK_MS);
