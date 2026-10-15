@@ -25,15 +25,30 @@ static uint32_t   s_kick_ticks = 0u;  /* >0 = 起步助推中（还剩几拍）*
 #define CTRL_KICK_TICKS  ((uint32_t)(BCAR_CTRL_KICK_MS / BCAR_TICK_MS))
 
 /**
-  * @brief 这一拍该用多大速度基准：起步助推期间用大的一脚，之后回 BASE
-  * @note  ★只在这里递减计数 —— 刹车那一支不会调它，所以"刹住不动"时
-  *        那一脚不会被白白消耗掉，等真要走的时候才踹。
+  * @brief 这一拍该用多大速度基准：起步那一下是"斜坡软起"，之后回 BASE
+  *
+  * 为什么是斜坡而不是"踹一脚"（原来 60ms 满力阶跃）：
+  *   这台车**后驱 + 没风机（负压坏了）**，阶跃那一脚会把车头抬起来（用户报"翘头严重"），
+  *   车头一抬灰度就看不见线。斜坡让扭矩慢慢加到"刚好破静摩擦"，加速摊在几百毫秒里，
+  *   抬头的冲量小得多。（实测：停→动要 60~80%，但转起来后 30% 就能维持 ⇒ 斜坡顶端
+  *   只需要短暂到 800，之后立刻回 BASE 巡航。）
+  *
+  * ★只在这里递减计数 —— 刹车那一支不会调它，所以"刹住不动"时不会白消耗，
+  *   等真要走的时候才起坡。
   */
 static float base_effective(void)
 {
     if (s_kick_ticks > 0u) {
+        uint32_t done = CTRL_KICK_TICKS - s_kick_ticks;          /* 已经过了几拍 */
+        float    f    = (float)done / (float)CTRL_KICK_TICKS;    /* 0 → 1 */
+        float    base = (float)s_base
+                      + ((float)BCAR_CTRL_KICK_MAG - (float)s_base) * f;
+
         s_kick_ticks--;
-        return (float)BCAR_CTRL_KICK_MAG;
+        if (s_kick_ticks == 0u) {
+            return (float)s_base;                                /* 斜坡走完 = 回巡航 */
+        }
+        return base;
     }
     return (float)s_base;
 }

@@ -577,6 +577,11 @@
           <FilePath>../src/drivers/encoder.c</FilePath>
         </File>
         <File>
+          <FileName>fan.c</FileName>
+          <FileType>1</FileType>
+          <FilePath>../src/drivers/fan.c</FilePath>
+        </File>
+        <File>
           <FileName>imu660.c</FileName>
           <FileType>1</FileType>
           <FilePath>../src/drivers/imu660.c</FilePath>

@@ -19,6 +19,7 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "fan.h"
 #include "stm32f1xx_it.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -189,6 +190,7 @@ void SysTick_Handler(void)
   /* USER CODE BEGIN SysTick_IRQn 0 */
   /* 1ms 一次的软件时基（HAL_IncTick 之外我们自己那套 5ms 节拍在这里累积）*/
   bsp_tick_inc_ms();
+  fan_tick_isr();      /* 风机软件 PWM（1ms 一拍）*/
   /* USER CODE END SysTick_IRQn 0 */
   HAL_IncTick();
   /* USER CODE BEGIN SysTick_IRQn 1 */

@@ -14,6 +14,7 @@
 #include "key.h"
 #include "led.h"
 #include "motor.h"
+#include "fan.h"
 #include "adc_ir.h"
 #include "control.h"
 #include "encoder.h"
@@ -416,6 +417,22 @@ static void execute(char *line)
             uart_dbg_printf("OK SDIR=%d（陀螺直行方向；1=默认 2=反过来）\r\n", (int)sign);
         } else {
             uart_dbg_puts("ERR 用法: SDIR <1|2>  （1 = 默认方向；2 = 反过来）\r\n");
+        }
+    } else if (su_streq(w, "FAN")) {
+        /* 风机（负压）：0 = 关，1 / 2 = 两个吹风方向 —— 试出"往下压"的那个，
+         * 它就同时被记成"发车时用的方向"（读秒会自动开它）。 */
+        uint32_t v = 0u;
+        if (arg_u32(line, &v) && v <= 2u) {
+            if (v == 0u) {
+                fan_off();
+                uart_dbg_puts("OK FAN 关（发车方向不变）\r\n");
+            } else {
+                fan_set_dir((uint8_t)v);
+                uart_dbg_printf("OK FAN %u（已记作发车方向；试一下风往哪吹，选往下压的那个）\r\n",
+                                (unsigned)v);
+            }
+        } else {
+            uart_dbg_puts("ERR 用法: FAN <0|1|2>  （0=关 1=正吹 2=反吹）\r\n");
         }
     } else if (su_streq(w, "KEY")) {
         /* held = 这一下按住多久了 —— 台上验"长按 200ms 发车"就看它 */

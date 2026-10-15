@@ -31,6 +31,7 @@
 #include "buzzer.h"
 #include "key.h"
 #include "motor.h"
+#include "fan.h"
 #include "adc_ir.h"
 #include "encoder.h"
 #include "imu660.h"
@@ -142,7 +143,12 @@ int main(void)
   uart_dbg_init();
   led_init();
   buzzer_init();
-  key_init();
+  fan_init();          /* 风机（负压）：上电先关着，发车读秒才开 */
+  /* 风机自检：上电转 350ms —— 这是"这条路通不通"的唯一可靠判据
+   * （串口命令时通时断，靠敲 FAN 测不准）。听得到/看得到就说明 U6 + 风机是好的。 */
+  fan_launch_on();
+  HAL_Delay(350);
+  fan_off();  key_init();
   cmdline_init();
   fsm_init();
 
@@ -400,6 +406,8 @@ int main(void)
 
           if (st == FSM_COUNTDOWN)
           {
+            /* ★风机先转起来（要几百毫秒才能上劲），这样起步那一脚压得住车头 */
+            fan_launch_on();
             /* 读秒这 3 秒：车摆在发车点（赛道图上那个"小蓝框" = nav_map 的 s=0，车头朝 S），
              * 电机已刹车、纹丝不动 —— 正好拿来标陀螺零偏。 */
             launch_begin(&s_launch, bsp_millis());
@@ -431,6 +439,7 @@ int main(void)
           }
           else if (s_fsm_prev == FSM_RUN)
           {
+            fan_off();                     /* 离开 RUN 就关风机（2.5A，别常开）*/
             control_exit_run();
             uart_dbg_puts("[CTRL] 离开 RUN：转向环交还，电机已刹车\r\n");
           }
